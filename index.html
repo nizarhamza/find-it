@@ -332,6 +332,7 @@
             <option value="15">Easy — 15 tries</option>
             <option value="10" selected>Normal — 10 tries</option>
             <option value="7">Hard — 7 tries</option>
+            <option value="Infinity">Zen — ∞ tries</option>
           </select>
           <button class="btn primary" id="newBtn">New game</button>
           <button class="btn" id="giveBtn">Give up</button>
@@ -420,7 +421,7 @@ if (typeof module !== "undefined") module.exports = { score, WORDS };
 
 /* ---------------- State ---------------- */
 const S = { mode:"num", len:4, max:10, secret:"", guesses:[], over:false,
-            wins:0, played:0, streak:0, best:null };
+            wins:0, played:0, streak:0, best:null, checking:false, gen:0 };
 
 const $ = id => document.getElementById(id);
 const inputsEl = $("inputs"), histEl = $("history"), msgEl = $("msg"),
@@ -449,22 +450,24 @@ function randomSecret(){
 function newGame(){
   S.max = +diffSel.value;
   S.len = +lenSel.value;
+  S.gen++; // invalidates any in-flight word check from a previous round
   S.secret = randomSecret();
   S.guesses = [];
   S.over = false;
+  S.checking = false;
   bannerEl.className = "banner hide";
   bannerEl.textContent = "";
   closeOverlay();
   modePill.textContent = S.mode === "num"
     ? `${S.len} digits · repeats allowed`
-    : `${S.len}-letter word · ${WORDS[S.len].length} in list`;
+    : `${S.len}-letter word · any real word accepted`;
   renderInputs();
   renderHistory();
   updateLeft();
   setMsg("");
 }
 
-function updateLeft(){ leftEl.textContent = Math.max(0, S.max - S.guesses.length); }
+function updateLeft(){ leftEl.textContent = S.max === Infinity ? "∞" : Math.max(0, S.max - S.guesses.length); }
 function setMsg(t, cls=""){ msgEl.textContent = t; msgEl.className = "msg " + cls; }
 
 /* ---------------- Input boxes ---------------- */
@@ -526,14 +529,45 @@ function renderInputs(){
 const readGuess = () => [...inputsEl.children].map(i => i.value).join("").toLowerCase();
 function clearInputs(){ [...inputsEl.children].forEach(i => i.value = ""); inputsEl.children[0].focus(); }
 
+/* ---------------- Word lookup (any real word, not just the built-in list) ---------------- */
+const dictCache = new Map(); // word -> true | false | undefined(unverifiable)
+
+async function isRealWord(word){
+  if (WORD_SETS[word.length]?.has(word)) return true; // curated list always counts, no roundtrip needed
+  if (dictCache.has(word)) return dictCache.get(word);
+  let result;
+  try {
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    result = res.ok; // 200 = real word, 404 = not found
+  } catch {
+    result = undefined; // offline / request failed — couldn't verify either way
+  }
+  dictCache.set(word, result);
+  return result;
+}
+
+function toggleInputs(disabled){ [...inputsEl.children].forEach(i => i.disabled = disabled); }
+
 /* ---------------- Play ---------------- */
-function submit(){
-  if (S.over) return;
+async function submit(){
+  if (S.over || S.checking) return;
   const g = readGuess();
   if (g.length !== S.len) return setMsg(`Fill all ${S.len} boxes.`, "err");
-  if (S.mode === "word" && !WORD_SETS[S.len].has(g))
-    return setMsg(`"${g.toUpperCase()}" isn't in the word list.`, "err");
   if (S.guesses.some(x => x.guess === g)) return setMsg("You already tried that one.", "err");
+
+  if (S.mode === "word"){
+    const myGen = S.gen;
+    S.checking = true;
+    toggleInputs(true);
+    setMsg("Checking word…");
+    const valid = await isRealWord(g);
+    S.checking = false;
+    if (S.gen !== myGen || S.over) return; // new game / give-up happened while we were waiting
+    toggleInputs(false);
+    inputsEl.children[S.len - 1].focus();
+    if (valid === false) return setMsg(`"${g.toUpperCase()}" isn't a real word.`, "err");
+    if (valid === undefined) return setMsg("Couldn't verify that word — check your connection and try again.", "err");
+  }
 
   const r = score(S.secret, g);
   S.guesses.push({ guess: g, ...r });
@@ -593,7 +627,7 @@ function showOverlay(won){
     .map((c, i) => `<div class="chip" style="animation-delay:${i * 70}ms">${c}</div>`).join("");
 
   $("oStats").innerHTML = `
-    <div class="stat"><span>Tries</span><b>${n}/${S.max}</b></div>
+    <div class="stat"><span>Tries</span><b>${n}/${S.max === Infinity ? "∞" : S.max}</b></div>
     <div class="stat"><span>Streak</span><b>${S.streak}</b></div>
     <div class="stat"><span>Best</span><b>${S.best ?? "—"}</b></div>
     <div class="stat"><span>Won</span><b>${S.wins}/${S.played}</b></div>`;
@@ -745,11 +779,11 @@ $("giveBtn").addEventListener("click", () => { if (!S.over) finish(false); });
 $("againBtn").addEventListener("click", newGame);
 $("overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeOverlay(); });
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter"){ e.preventDefault(); S.over ? newGame() : submit(); return; }
+  if (e.key === "Enter"){ e.preventDefault(); if (!S.checking) S.over ? newGame() : submit(); return; }
   if (e.key === "Escape"){ closeOverlay(); return; }
 
   // typing anywhere on the page drops the character into the next empty box
-  if (S.over || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+  if (S.over || S.checking || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
   const valid = S.mode === "num" ? /^[0-9]$/ : /^[a-zA-Z]$/;
   if (!valid.test(e.key)) return;
   const cells = [...inputsEl.children];
