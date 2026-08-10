@@ -156,7 +156,8 @@
   .msg.err{color:var(--red)}
   .msg.ok{color:var(--green)}
 
-  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px;padding-top:14px;border-top:1px solid var(--line)}
+  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px}
+  .divider{border-top:1px solid var(--line);margin:14px 0}
   .legend span{display:flex;align-items:center;gap:6px}
   .dot{width:10px;height:10px;border-radius:50%}
   .dot.g{background:var(--green)}.dot.a{background:var(--amber)}.dot.r{background:var(--red)}
@@ -335,17 +336,19 @@
   <div class="banner hide" id="banner"></div>
 
   <div class="card" id="playCard">
-    <div class="inputs" id="inputs"></div>
-    <div class="msg" id="msg"></div>
-
     <div class="legend">
       <span><i class="dot g"></i> right &amp; in place</span>
       <span><i class="dot a"></i> right, wrong place</span>
       <span><i class="dot r"></i> not in the code</span>
     </div>
     <div class="history" id="history">
-      <div class="empty">No guesses yet. Start typing above.</div>
+      <div class="empty">No guesses yet. Start typing below.</div>
     </div>
+
+    <div class="divider"></div>
+
+    <div class="inputs" id="inputs"></div>
+    <div class="msg" id="msg"></div>
   </div>
 
   <footer>
@@ -665,7 +668,7 @@ const confetti = (() => {
 })();
 
 function renderHistory(){
-  if (!S.guesses.length){ histEl.innerHTML = `<div class="empty">No guesses yet. Start typing above.</div>`; return; }
+  if (!S.guesses.length){ histEl.innerHTML = `<div class="empty">No guesses yet. Start typing below.</div>`; return; }
   histEl.innerHTML = S.guesses.map((g, i) => `
     <div class="guess">
       <div class="no">${i+1}</div>
