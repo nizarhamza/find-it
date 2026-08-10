@@ -104,6 +104,8 @@
   .theme-btn:hover{color:var(--accent);border-color:var(--accent);transform:rotate(18deg)}
   .menu-btn:hover,.menu-btn.on{color:var(--accent);border-color:var(--accent)}
   .theme-btn:focus-visible,.menu-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
+  html[dir="rtl"] .theme-btn{right:auto;left:0}
+  html[dir="rtl"] .menu-btn{left:auto;right:0}
 
   /* ---- collapsible settings panel ---- */
   .collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.2,.8,.2,1)}
@@ -311,7 +313,7 @@
   <header>
     <button class="menu-btn" id="menuBtn" title="Game menu" aria-label="Toggle mode &amp; settings menu" aria-expanded="false" aria-controls="settingsPanel">☰</button>
     <h1>Find It</h1>
-    <div class="sub">Crack the hidden code — numbers or words.</div>
+    <div class="sub" id="subtitle">Crack the hidden code — numbers or words.</div>
     <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">☾</button>
   </header>
 
@@ -319,21 +321,21 @@
     <div class="collapse-inner">
       <div class="card">
         <div class="row">
-          <label class="lbl">Mode</label>
+          <label class="lbl" id="modeLabel">Mode</label>
           <div class="seg" id="modeSeg">
-            <button data-mode="num" class="on">Numbers</button>
-            <button data-mode="word">Words</button>
+            <button data-mode="num" class="on" id="numbersBtn">Numbers</button>
+            <button data-mode="word" id="wordsBtn">Words</button>
           </div>
         </div>
         <div class="row settings-row">
-          <label class="lbl">Settings</label>
-          <select id="lenSel" title="Word length"></select>
-          <select id="diffSel" title="Difficulty">
-            <option value="15">Easy — 15 tries</option>
-            <option value="10" selected>Normal — 10 tries</option>
-            <option value="7">Hard — 7 tries</option>
-            <option value="Infinity">Zen — ∞ tries</option>
+          <label class="lbl" id="settingsLabel">Settings</label>
+          <select id="langSel" title="Language">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="ar">العربية</option>
           </select>
+          <select id="lenSel" title="Word length"></select>
+          <select id="diffSel" title="Difficulty"></select>
           <button class="btn primary" id="newBtn">New game</button>
           <button class="btn" id="giveBtn">Give up</button>
         </div>
@@ -343,7 +345,7 @@
 
   <div class="card">
     <div class="status">
-      <div class="pill">Tries left <b id="left">10</b></div>
+      <div class="pill"><span id="triesLeftLabel">Tries left</span> <b id="left">10</b></div>
       <div class="pill" id="modePill">4 digits · repeats allowed</div>
     </div>
   </div>
@@ -352,9 +354,9 @@
 
   <div class="card" id="playCard">
     <div class="legend">
-      <span><i class="dot g"></i> right &amp; in place</span>
-      <span><i class="dot a"></i> right, wrong place</span>
-      <span><i class="dot r"></i> not in the code</span>
+      <span><i class="dot g"></i> <span id="legendExact">right &amp; in place</span></span>
+      <span><i class="dot a"></i> <span id="legendPartial">right, wrong place</span></span>
+      <span><i class="dot r"></i> <span id="legendWrong">not in the code</span></span>
     </div>
     <div class="history" id="history">
       <div class="empty">No guesses yet. Start typing below.</div>
@@ -366,7 +368,7 @@
     <div class="msg" id="msg"></div>
   </div>
 
-  <footer>
+  <footer id="footer">
     Type to auto-advance · Backspace to go back · Enter to check<br>
     Word guesses must be real words from the built-in list.
   </footer>
@@ -382,26 +384,57 @@
     <div class="reveal" id="oReveal"></div>
     <div class="stats" id="oStats"></div>
     <button class="btn primary" id="againBtn">Play again</button>
-    <p class="hint">Press Enter to play again · Esc to review the board</p>
+    <p class="hint" id="playAgainHint">Press Enter to play again · Esc to review the board</p>
   </div>
 </div>
 
 <script>
-/* ---------------- Word list (3–8 letters) ---------------- */
-const WORDS = {
+/* ---------------- Word lists (3–8 letters), per language ---------------- */
+const WORDS_BY_LANG = {
+en: {
 3:["cat","dog","sun","map","key","ice","jam","owl","fox","bat","pen","cup","box","net","web","sky","arm","bed","leg","ear","car","bus","toy","zip","gum","log","fan","rat","hat","pot","tip","win","war","oak","elk","nut","oil","pie","ray","sea","top","vet","yak","zoo","bag","bee","cow","den","egg","fig","gas","hen","ink","jar","kit","lip","mud","nap","paw","rug","ski","tag","urn","van","wax","bow","cab","dam","fun","gap","hut","jet","lab","mix","nod","pig","rib","sap","tan","cut","dry","eye","few","air"],
 4:["bird","tree","lamp","fish","gold","rain","moon","star","wolf","frog","king","milk","road","ship","snow","wind","book","cake","door","fire","game","hand","iron","jump","kite","leaf","mind","note","open","page","quiz","ring","salt","time","unit","vase","wave","yard","zone","bell","corn","dust","echo","farm","gate","hill","idea","jazz","knot","lake","maze","nest","oval","palm","quit","rock","sand","tide","user","void","wall","yarn","zero","bath","clay","desk","east","flag","glow","herb","inch","jail","keen","lion","mask","nine","oven","pond","rope","seed","tent","volt","wing"],
 5:["apple","brave","cloud","dance","eagle","flame","grape","house","input","jelly","knife","lemon","mango","noble","ocean","piano","queen","river","stone","tiger","urban","vivid","water","xenon","yield","zebra","actor","beach","chair","dream","earth","frost","glass","heart","index","joker","koala","light","music","north","olive","pearl","quiet","robot","smile","train","under","valve","wheat","youth","amber","bloom","crane","depth","ember","fable","giant","honey","ivory","joint","kneel","laser","metal","night","onion","plant","quest","rhyme","spark","torch","ultra","vapor","witty","yacht","angle","blaze","curve","donut","fresh","globe","hotel","input"],
 6:["animal","branch","candle","desert","engine","flower","garden","hammer","island","jacket","kettle","ladder","magnet","nature","orange","pencil","quiver","rocket","silver","turtle","umpire","valley","window","yellow","zigzag","artist","bridge","circle","dragon","empire","forest","gravel","harbor","insect","jungle","knight","lizard","market","napkin","office","planet","quartz","ribbon","summer","tunnel","unique","velvet","walnut","anchor","basket","copper","dinner","effort","fabric","guitar","helmet","injury","junior","kidney","puzzle","mirror","nickel","oxygen","parrot","quaint","rescue","saddle","temple","unfold","vacuum","winter","yogurt","bamboo","cactus","damage","escape","fossil","gopher","hunter","indigo"],
 7:["balloon","captain","diamond","evening","factory","gateway","harvest","imagine","journey","kitchen","library","monster","network","october","package","quality","rainbow","scatter","teacher","uniform","village","weather","younger","zealous","academy","bicycle","cabinet","dolphin","eclipse","freedom","gallery","holiday","insider","justice","keeping","lantern","machine","natural","organic","painter","quarter","respect","silence","tornado","upgrade","volcano","warrior","yielded","amazing","blanket","comfort","default","element","fantasy","granite","husband","iceberg","jasmine","kingdom","liberty","mystery","noodles","october","pyramid","quicken","routine","stadium","triumph","unicorn","venture","whisper"],
 8:["airplane","birthday","computer","dinosaur","elephant","festival","greeting","hospital","interior","junction","keyboard","language","mountain","notebook","observer","painting","question","reminder","sandwich","triangle","umbrella","vacation","watchdog","yearbook","absolute","backpack","campaign","daylight","envelope","flamingo","gorgeous","handbook","identity","jealousy","kindness","lavender","magnetic","nautical","obstacle","parallel","quantity","resource","strength","together","universe","vertical","wildlife","yielding","argument","blizzard","chemical","diagonal","exercise","farewell","gasoline","headline","increase","juvenile","knuckles","lifetime","material","negative","official","platform","quotient","received","seasonal","tropical"]
-};
-// sanitize: keep only words of the exact length, unique, lowercase
-for (const k of Object.keys(WORDS)) {
-  const n = +k;
-  WORDS[k] = [...new Set(WORDS[k].map(w => w.toLowerCase()))].filter(w => w.length === n && /^[a-z]+$/.test(w));
+},
+fr: {
+3:["coq","oie","rat","âne","œuf","riz","ail","blé","sel","thé","jus","eau","vin","œil","nez","cou","dos","mur","sol","lit","sac","clé","lac","mer","île","feu","ami","roi","bus","bas","nid","été","art","mot","bol","pot","car","ski","gaz","axe","épi","roc","duc","pré","cri","vue","pie","vis","air","bec","dur","ton","nom"],
+4:["chat","ours","loup","cerf","lion","paon","mule","bouc","veau","pain","lait","chou","maïs","café","soda","tête","yeux","dent","bras","main","pied","cœur","foie","peau","sang","toit","lune","ciel","vent","père","mère","sœur","fils","mari","amie","bébé","dame","bleu","vert","rose","noir","gris","juge","jour","nuit","soir","mois","pays","pont","tour","gare","vélo","moto","gros","long","haut","lent","fort","beau","joli","laid","sale"],
+5:["chien","vache","poule","lapin","biche","tigre","singe","zèbre","crabe","guêpe","aigle","hibou","cygne","koala","panda","hyène","chiot","pâtes","soupe","fruit","pomme","poire","pêche","prune","melon","sucre","huile","tarte","glace","bière","front","coude","doigt","ongle","jambe","genou","porte","salon","table","tapis","lampe","livre","stylo","nuage","pluie","neige","orage","forêt","arbre","fleur","herbe","océan","plage","sable","roche","terre","fumée","frère","fille","oncle","tante","femme","homme","rouge","jaune","blanc","beige","élève","marin","reine","temps","matin","année","heure","ville","route","école","avion","train","grand","petit","mince","court","large","chaud","froid","jeune","vieux","riche","calme"],
+6:["cheval","cochon","mouton","chèvre","canard","souris","renard","girafe","tortue","requin","homard","fourmi","mouche","oiseau","pigeon","chacal","agneau","chaton","beurre","viande","salade","légume","banane","orange","citron","fraise","cerise","raisin","ananas","mangue","tomate","oignon","laitue","poivre","farine","gâteau","bonbon","bouche","langue","épaule","ventre","hanche","orteil","poumon","muscle","maison","jardin","garage","chaise","tiroir","rideau","miroir","crayon","papier","cahier","soleil","étoile","éclair","vallée","fleuve","pierre","désert","cousin","enfant","garçon","violet","marron","avocat","acteur","pilote","soldat","prince","minute","chemin","église","marché","banque","bateau","camion","étroit","rapide","faible","ancien","propre","facile","pauvre","triste","joyeux"],
+7:["serpent","poisson","baleine","dauphin","pieuvre","abeille","corbeau","moineau","gorille","léopard","guépard","chameau","poulain","fromage","abricot","carotte","poivron","épinard","haricot","biscuit","cheveux","oreille","estomac","cerveau","fenêtre","plafond","chambre","cuisine","armoire","horloge","colline","feuille","rivière","cousine","docteur","médecin","pompier","boucher","pêcheur","fermier","artiste","peintre","danseur","semaine","seconde","château","hôpital","magasin","voiture","nouveau","heureux"],
+8:["éléphant","papillon","araignée","escargot","chouette","pingouin","autruche","pastèque","vinaigre","chocolat","poitrine","escalier","tonnerre","montagne","dentiste","policier","étudiant","musicien","chanteur","écrivain","aéroport"]
+},
+ar: {
+3:["قطة","كلب","بطة","فأر","جرذ","ذئب","أسد","نمر","فيل","قرد","حوت","قرش","نسر","فهد","ضبع","جمل","بغل","تيس","حمل","عجل","مهر","هرة","جرو","طير","سمك","بقر","خبز","جبن","بيض","لحم","أرز","موز","كرز","عنب","خوخ","جزر","بصل","ثوم","ذرة","قمح","سكر","ملح","زيت","شاي","ماء","عسل","رأس","شعر","عين","أنف","أذن","كتف","ظفر","صدر","ظهر","بطن","خصر","ساق","قدم","قلب","رئة","كبد","جلد","عظم","باب","سقف","سلم","قلم","شمس","قمر","مطر","ثلج","ريح","رعد","برق","جبل","عشب","نهر","بحر","رمل","حجر","نار","أخت","ابن","عمة","خال","زوج","طفل","رجل","ولد","بنت","بني","ملك","وقت","يوم","ليل","شهر","سنة","بلد","جسر","برج","قصر","سوق","بنك","سجن","جيش"],
+4:["حصان","بقرة","خروف","ماعز","أرنب","ثعلب","ضفدع","سمكة","نحلة","دبور","نملة","دودة","طائر","بومة","غراب","بجعة","كنغر","حمار","حليب","زبدة","حساء","سلطة","خضار","تفاح","مشمش","شمام","بطيخ","فلفل","كوسة","كرنب","دقيق","كعكة","حلوى","قهوة","عصير","نبيذ","جبهة","لسان","رقبة","ذراع","مرفق","إصبع","ركبة","معدة","دماغ","عضلة","منزل","جدار","غرفة","مطبخ","حمام","كراج","كرسي","سرير","مرآة","ساعة","هاتف","كتاب","ورقة","دفتر","نجمة","سماء","وادي","غابة","شجرة","زهرة","محيط","شاطئ","صخرة","تراب","جليد","دخان","ابنة","خالة","زوجة","صديق","أحمر","أزرق","أخضر","أصفر","وردي","أسود","أبيض","طبيب","ممرض","معلم","طالب","قاضي","شرطي","جندي","طباخ","خباز","جزار","صياد","فلاح","فنان","رسام","مغني","راقص","ممثل","كاتب","صحفي","طيار","بحار","ملكة","أمير","صباح","مساء","طريق","مسجد","متجر","محطة","مطار","قطار","مطعم","فندق","متحف","مكتب","شركة","مصنع","رئيس","وزير","شرطة","سلام","حرية","ماضي","حاضر","شبكة"],
+5:["خنزير","دجاجة","زرافة","تمساح","ثعبان","فراشة","ذبابة","بعوضة","حلزون","حمامة","عصفور","طاووس","ببغاء","بطريق","نعامة","باندا","فاكهة","كمثرى","ليمون","مانجو","طماطم","بطاطا","سبانخ","فطيرة","نافذة","أرضية","حديقة","طاولة","خزانة","سجادة","ستارة","مصباح","حاسوب","حقيبة","مفتاح","سحابة","عاصفة","بحيرة","جزيرة","صحراء","امرأة","رمادي","محامي","مهندس","أميرة","أسبوع","دقيقة","مدينة","كنيسة","مدرسة","سفينة","طائرة","سيارة","دراجة","جامعة","مكتبة","تلفاز","برمجة","تاريخ","أحياء","فلسفة","سياسة","حكومة","دستور","قانون","محكمة","معركة","هزيمة","عدالة","تطبيق"],
+6:["سلحفاة","دولفين","عنكبوت","غوريلا","برتقال","فراولة","أناناس","بسكويت","مثلجات","بنفسجي","موسيقي","مستشفى","صيدلية","فيزياء","كيمياء","اقتصاد","برلمان","انتصار","مساواة","مستقبل","برنامج"],
+7:["معكرونة","باذنجان","تلفزيون","برتقالي","رياضيات","جغرافيا","استقلال","مسؤولية","معلومات","مواصلات","اتصالات","مواطنون","مسؤولون","مهندسون"],
+8:["فاصولياء","شوكولاتة","مستشفيات","انتخابات","اجتماعات","اقتصادية","اجتماعية"]
 }
-const WORD_SETS = Object.fromEntries(Object.entries(WORDS).map(([k,v]) => [k, new Set(v)]));
+};
+// per-language allowed letters, used both to sanitize the built-in lists and to filter keystrokes
+const LETTER_REGEX = {
+  en: /^[a-z]+$/,
+  fr: /^[a-zàâäéèêëïîôöùûüÿçœæ]+$/,
+  ar: /^[ء-ي]+$/
+};
+// sanitize: keep only words of the exact length, unique, lowercase, made of that language's letters
+for (const lang of Object.keys(WORDS_BY_LANG)) {
+  const words = WORDS_BY_LANG[lang];
+  for (const k of Object.keys(words)) {
+    const n = +k;
+    words[k] = [...new Set(words[k].map(w => w.toLowerCase()))].filter(w => w.length === n && LETTER_REGEX[lang].test(w));
+  }
+}
+const WORD_SETS_BY_LANG = Object.fromEntries(Object.entries(WORDS_BY_LANG)
+  .map(([lang, words]) => [lang, Object.fromEntries(Object.entries(words).map(([k,v]) => [k, new Set(v)]))]));
+// languages where the free dictionary API (dictionaryapi.dev) reliably returns real entries —
+// tested fr/ar and got inconsistent 404/502s even for common words, so those stay list-only
+const ONLINE_DICT_LANGS = new Set(["en"]);
 
 /* ---------------- Core scoring (Mastermind rules) ---------------- */
 function score(secret, guess){
@@ -417,24 +450,165 @@ function score(secret, guess){
   for (const ch in gc) if (sc[ch]) partial += Math.min(sc[ch], gc[ch]);
   return { exact, partial, wrong: n - exact - partial };
 }
-if (typeof module !== "undefined") module.exports = { score, WORDS };
+if (typeof module !== "undefined") module.exports = { score, WORDS: WORDS_BY_LANG.en, WORDS_BY_LANG };
+
+/* ---------------- Translations ---------------- */
+const I18N = {
+en: {
+  dir: "ltr",
+  subtitle: "Crack the hidden code — numbers or words.",
+  menuTitle: "Game menu", menuAria: "Toggle mode & settings menu",
+  themeToLight: "Switch to light mode", themeToDark: "Switch to dark mode", themeAria: "Switch colour theme",
+  modeLabel: "Mode", numbersBtn: "Numbers", wordsBtn: "Words", settingsLabel: "Settings", langLabel: "Language",
+  diffEasy: "Easy", diffNormal: "Normal", diffHard: "Hard", diffZen: "Zen",
+  newGameBtn: "New game", giveUpBtn: "Give up",
+  triesLeftLabel: "Tries left",
+  legendExact: "right & in place", legendPartial: "right, wrong place", legendWrong: "not in the code",
+  emptyHistory: "No guesses yet. Start typing below.",
+  footerHint1: "Type to auto-advance · Backspace to go back · Enter to check",
+  footerWordHint: "Word guesses are checked against a dictionary.",
+  fillBoxes: n => `Fill all ${n} boxes.`,
+  alreadyTried: "You already tried that one.",
+  checkingWord: "Checking word…",
+  notRealWord: w => `"${w}" isn't a real word.`,
+  cantVerify: "Couldn't verify that word — check your connection and try again.",
+  crackedIn: (n, tw) => `Cracked it in ${n} ${tw}!`,
+  outOfTries: "Out of tries — the code was:",
+  digitsSuffix: n => `${n} digits · repeats allowed`,
+  wordSuffix: n => `${n}-letter word · any real word accepted`,
+  wordSuffixList: n => `${n}-letter word · built-in list`,
+  lenDigits: n => `${n} digits`, lenLetters: n => `${n} letters`,
+  ranks: [
+    [1, "Unbelievable!", "First try. That was pure magic."],
+    [3, "Outstanding!",  "You read that code like a book."],
+    [5, "Brilliant!",    "Sharp deduction — barely broke a sweat."],
+    [8, "Well played!",  "Solid logic all the way through."],
+    [99,"Congratulations!", "Down to the wire, but you got there."]
+  ],
+  soClose: "So close!",
+  ranOutNumber: "You ran out of tries. The hidden number was:",
+  ranOutWord: "You ran out of tries. The hidden word was:",
+  foundIn: (n, tw) => `You found it in <b>${n}</b> ${tw}.`,
+  statTries: "Tries", statStreak: "Streak", statBest: "Best", statWon: "Won",
+  playAgainBtn: "Play again",
+  playAgainHint: "Press Enter to play again · Esc to review the board",
+  triesWord: n => n === 1 ? "try" : "tries",
+},
+fr: {
+  dir: "ltr",
+  subtitle: "Devinez le code caché — chiffres ou mots.",
+  menuTitle: "Menu du jeu", menuAria: "Afficher ou masquer le mode et les paramètres",
+  themeToLight: "Passer au thème clair", themeToDark: "Passer au thème sombre", themeAria: "Changer de thème",
+  modeLabel: "Mode", numbersBtn: "Chiffres", wordsBtn: "Mots", settingsLabel: "Paramètres", langLabel: "Langue",
+  diffEasy: "Facile", diffNormal: "Normal", diffHard: "Difficile", diffZen: "Zen",
+  newGameBtn: "Nouvelle partie", giveUpBtn: "Abandonner",
+  triesLeftLabel: "Essais restants",
+  legendExact: "bien placé", legendPartial: "mal placé", legendWrong: "absent du code",
+  emptyHistory: "Aucun essai pour l'instant. Commencez à taper ci-dessous.",
+  footerHint1: "Tapez pour avancer · Retour arrière pour reculer · Entrée pour valider",
+  footerWordHint: "Les mots doivent provenir de la liste intégrée.",
+  fillBoxes: n => `Remplissez les ${n} cases.`,
+  alreadyTried: "Vous avez déjà essayé ce mot.",
+  checkingWord: "Vérification du mot…",
+  notRealWord: w => `« ${w} » n'est pas un mot valide.`,
+  cantVerify: "Impossible de vérifier ce mot — vérifiez votre connexion et réessayez.",
+  crackedIn: (n, tw) => `Trouvé en ${n} ${tw} !`,
+  outOfTries: "Essais épuisés — le code était :",
+  digitsSuffix: n => `${n} chiffres · répétitions autorisées`,
+  wordSuffix: n => `Mot de ${n} lettres · liste intégrée`,
+  wordSuffixList: n => `Mot de ${n} lettres · liste intégrée`,
+  lenDigits: n => `${n} chiffres`, lenLetters: n => `${n} lettres`,
+  ranks: [
+    [1, "Incroyable !", "Du premier coup. C'était de la magie pure."],
+    [3, "Exceptionnel !", "Vous avez lu ce code comme un livre ouvert."],
+    [5, "Brillant !", "Déduction affûtée — à peine essoufflé."],
+    [8, "Bien joué !", "Une logique solide du début à la fin."],
+    [99,"Félicitations !", "C'était serré, mais vous avez réussi."]
+  ],
+  soClose: "Si près du but !",
+  ranOutNumber: "Vous n'avez plus d'essais. Le nombre caché était :",
+  ranOutWord: "Vous n'avez plus d'essais. Le mot caché était :",
+  foundIn: (n, tw) => `Trouvé en <b>${n}</b> ${tw}.`,
+  statTries: "Essais", statStreak: "Série", statBest: "Meilleur", statWon: "Gagné",
+  playAgainBtn: "Rejouer",
+  playAgainHint: "Entrée pour rejouer · Échap pour revoir la grille",
+  triesWord: n => n === 1 ? "essai" : "essais",
+},
+ar: {
+  dir: "rtl",
+  subtitle: "اكتشف الشيفرة الخفية — أرقام أو كلمات.",
+  menuTitle: "قائمة اللعبة", menuAria: "إظهار أو إخفاء الوضع والإعدادات",
+  themeToLight: "التبديل إلى الوضع الفاتح", themeToDark: "التبديل إلى الوضع الداكن", themeAria: "تغيير المظهر",
+  modeLabel: "الوضع", numbersBtn: "أرقام", wordsBtn: "كلمات", settingsLabel: "الإعدادات", langLabel: "اللغة",
+  diffEasy: "سهل", diffNormal: "عادي", diffHard: "صعب", diffZen: "بلا حدود",
+  newGameBtn: "لعبة جديدة", giveUpBtn: "استسلام",
+  triesLeftLabel: "المحاولات المتبقية",
+  legendExact: "صحيح ومكانه صحيح", legendPartial: "صحيح، لكن مكانه خطأ", legendWrong: "غير موجود في الشيفرة",
+  emptyHistory: "لا توجد محاولات بعد. ابدأ الكتابة أدناه.",
+  footerHint1: "اكتب للانتقال تلقائيًا · مسافة للخلف للرجوع · Enter للتحقق",
+  footerWordHint: "يجب أن تكون الكلمات من القائمة المدمجة.",
+  fillBoxes: n => `املأ الخانات الـ${n}.`,
+  alreadyTried: "لقد جربت هذه الكلمة من قبل.",
+  checkingWord: "جارٍ التحقق من الكلمة…",
+  notRealWord: w => `"${w}" ليست كلمة صحيحة.`,
+  cantVerify: "تعذّر التحقق من هذه الكلمة — تحقق من اتصالك وحاول مرة أخرى.",
+  crackedIn: (n, tw) => `اكتشفتها خلال ${n} ${tw}!`,
+  outOfTries: "نفدت المحاولات — كانت الشيفرة:",
+  digitsSuffix: n => `${n} أرقام · التكرار مسموح`,
+  wordSuffix: n => `كلمة من ${n} أحرف · من القائمة المدمجة`,
+  wordSuffixList: n => `كلمة من ${n} أحرف · من القائمة المدمجة`,
+  lenDigits: n => `${n} أرقام`, lenLetters: n => `${n} أحرف`,
+  ranks: [
+    [1, "لا يُصدَّق!", "من أول محاولة. كان ذلك سحرًا خالصًا."],
+    [3, "رائع!", "قرأت الشيفرة وكأنها كتاب مفتوح."],
+    [5, "بارع!", "استنتاج دقيق — بالكاد بذلت جهدًا."],
+    [8, "أحسنت!", "منطق متين من البداية إلى النهاية."],
+    [99,"تهانينا!", "كانت اللحظات الأخيرة حاسمة، لكنك نجحت."]
+  ],
+  soClose: "قريب جدًا!",
+  ranOutNumber: "نفدت محاولاتك. الرقم الخفي كان:",
+  ranOutWord: "نفدت محاولاتك. الكلمة الخفية كانت:",
+  foundIn: (n, tw) => `اكتشفتها خلال <b>${n}</b> ${tw}.`,
+  statTries: "المحاولات", statStreak: "التتابع", statBest: "الأفضل", statWon: "الفوز",
+  playAgainBtn: "العب مرة أخرى",
+  playAgainHint: "Enter للعب مرة أخرى · Esc لمراجعة اللوحة",
+  triesWord: n => n === 1 ? "محاولة واحدة" : "محاولات",
+}
+};
+function t(key, ...args){
+  const val = I18N[S.lang][key];
+  return typeof val === "function" ? val(...args) : val;
+}
 
 /* ---------------- State ---------------- */
 const S = { mode:"num", len:4, max:10, secret:"", guesses:[], over:false,
-            wins:0, played:0, streak:0, best:null, checking:false, gen:0 };
+            wins:0, played:0, streak:0, best:null, checking:false, gen:0, lang:"en" };
 
 const $ = id => document.getElementById(id);
 const inputsEl = $("inputs"), histEl = $("history"), msgEl = $("msg"),
       bannerEl = $("banner"), leftEl = $("left"), modePill = $("modePill"),
-      lenSel = $("lenSel"), diffSel = $("diffSel");
+      lenSel = $("lenSel"), diffSel = $("diffSel"), langSel = $("langSel");
 
 function buildLenOptions(){
+  const words = WORDS_BY_LANG[S.lang];
   const opts = S.mode === "num"
-    ? [3,4,5,6].map(n => [n, n + " digits"])
-    : Object.keys(WORDS).map(Number).sort((a,b)=>a-b).map(n => [n, n + " letters"]);
-  lenSel.innerHTML = opts.map(([v,t]) => `<option value="${v}">${t}</option>`).join("");
+    ? [3,4,5,6].map(n => [n, t("lenDigits", n)])
+    : Object.keys(words).map(Number).sort((a,b)=>a-b).map(n => [n, t("lenLetters", n)]);
+  lenSel.innerHTML = opts.map(([v,label]) => `<option value="${v}">${label}</option>`).join("");
   const want = opts.some(o => o[0] === S.len) ? S.len : (S.mode === "num" ? 4 : 5);
   S.len = want; lenSel.value = String(want);
+}
+
+function buildDiffOptions(){
+  const cur = diffSel.value || "10";
+  const opts = [
+    [15, t("diffEasy")], [10, t("diffNormal")], [7, t("diffHard")], ["Infinity", t("diffZen")]
+  ];
+  diffSel.innerHTML = opts.map(([v,label]) => {
+    const tries = v === "Infinity" ? "∞" : v;
+    return `<option value="${v}">${label} — ${tries} ${t("triesWord", v === "Infinity" ? 2 : +v)}</option>`;
+  }).join("");
+  diffSel.value = [...diffSel.options].some(o => o.value === cur) ? cur : "10";
 }
 
 function randomSecret(){
@@ -443,7 +617,7 @@ function randomSecret(){
     for (let i = 0; i < S.len; i++) s += Math.floor(Math.random() * 10);
     return s;
   }
-  const list = WORDS[S.len];
+  const list = WORDS_BY_LANG[S.lang][S.len];
   return list[Math.floor(Math.random() * list.length)];
 }
 
@@ -459,8 +633,8 @@ function newGame(){
   bannerEl.textContent = "";
   closeOverlay();
   modePill.textContent = S.mode === "num"
-    ? `${S.len} digits · repeats allowed`
-    : `${S.len}-letter word · any real word accepted`;
+    ? t("digitsSuffix", S.len)
+    : (ONLINE_DICT_LANGS.has(S.lang) ? t("wordSuffix", S.len) : t("wordSuffixList", S.len));
   renderInputs();
   renderHistory();
   updateLeft();
@@ -468,7 +642,7 @@ function newGame(){
 }
 
 function updateLeft(){ leftEl.textContent = S.max === Infinity ? "∞" : Math.max(0, S.max - S.guesses.length); }
-function setMsg(t, cls=""){ msgEl.textContent = t; msgEl.className = "msg " + cls; }
+function setMsg(msg, cls=""){ msgEl.textContent = msg; msgEl.className = "msg " + cls; }
 
 /* ---------------- Input boxes ---------------- */
 /* Shrinks the cells (and their gap) just enough that S.len of them always
@@ -493,6 +667,15 @@ function sizeCells(){
 }
 addEventListener("resize", () => sizeCells());
 
+// single valid letter for the current language (Arabic has no case; en/fr match either case)
+function letterRegex(){
+  return S.lang === "ar" ? /^[ء-ي]$/ : S.lang === "fr" ? /^[a-zàâäéèêëïîôöùûüÿçœæ]$/i : /^[a-zA-Z]$/;
+}
+// global version, for stripping non-letters out of pasted text
+function letterStripRegex(){
+  return S.lang === "ar" ? /[^ء-ي]/g : S.lang === "fr" ? /[^a-zàâäéèêëïîôöùûüÿçœæ]/gi : /[^a-zA-Z]/g;
+}
+
 function renderInputs(){
   sizeCells();
   inputsEl.innerHTML = "";
@@ -504,7 +687,7 @@ function renderInputs(){
     inp.spellcheck = false;
     if (S.mode === "num"){ inp.inputMode = "numeric"; inp.pattern = "[0-9]"; }
     inp.addEventListener("input", () => {
-      const ok = S.mode === "num" ? /^[0-9]$/ : /^[a-zA-Z]$/;
+      const ok = S.mode === "num" ? /^[0-9]$/ : letterRegex();
       inp.value = ok.test(inp.value) ? inp.value.toUpperCase() : "";
       if (inp.value && i < S.len - 1) inputsEl.children[i+1].focus();
       setMsg("");
@@ -517,7 +700,7 @@ function renderInputs(){
     inp.addEventListener("paste", e => {
       e.preventDefault();
       const raw = (e.clipboardData.getData("text") || "").trim();
-      const clean = (S.mode === "num" ? raw.replace(/\D/g,"") : raw.replace(/[^a-zA-Z]/g,"")).toUpperCase();
+      const clean = (S.mode === "num" ? raw.replace(/\D/g,"") : raw.replace(letterStripRegex(),"")).toUpperCase();
       for (let k = 0; k + i < S.len && k < clean.length; k++) inputsEl.children[i+k].value = clean[k];
       inputsEl.children[Math.min(S.len - 1, i + clean.length)].focus();
     });
@@ -530,19 +713,21 @@ const readGuess = () => [...inputsEl.children].map(i => i.value).join("").toLowe
 function clearInputs(){ [...inputsEl.children].forEach(i => i.value = ""); inputsEl.children[0].focus(); }
 
 /* ---------------- Word lookup (any real word, not just the built-in list) ---------------- */
-const dictCache = new Map(); // word -> true | false | undefined(unverifiable)
+const dictCache = new Map(); // "lang:word" -> true | false | undefined(unverifiable)
 
-async function isRealWord(word){
-  if (WORD_SETS[word.length]?.has(word)) return true; // curated list always counts, no roundtrip needed
-  if (dictCache.has(word)) return dictCache.get(word);
+async function isRealWord(lang, word){
+  if (WORD_SETS_BY_LANG[lang]?.[word.length]?.has(word)) return true; // curated list always counts, no roundtrip needed
+  if (!ONLINE_DICT_LANGS.has(lang)) return false; // no reliable online dictionary for this language — curated list is authoritative
+  const cacheKey = lang + ":" + word;
+  if (dictCache.has(cacheKey)) return dictCache.get(cacheKey);
   let result;
   try {
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word)}`);
     result = res.ok; // 200 = real word, 404 = not found
   } catch {
     result = undefined; // offline / request failed — couldn't verify either way
   }
-  dictCache.set(word, result);
+  dictCache.set(cacheKey, result);
   return result;
 }
 
@@ -552,21 +737,28 @@ function toggleInputs(disabled){ [...inputsEl.children].forEach(i => i.disabled 
 async function submit(){
   if (S.over || S.checking) return;
   const g = readGuess();
-  if (g.length !== S.len) return setMsg(`Fill all ${S.len} boxes.`, "err");
-  if (S.guesses.some(x => x.guess === g)) return setMsg("You already tried that one.", "err");
+  if (g.length !== S.len) return setMsg(t("fillBoxes", S.len), "err");
+  if (S.guesses.some(x => x.guess === g)) return setMsg(t("alreadyTried"), "err");
 
   if (S.mode === "word"){
-    const myGen = S.gen;
-    S.checking = true;
-    toggleInputs(true);
-    setMsg("Checking word…");
-    const valid = await isRealWord(g);
-    S.checking = false;
-    if (S.gen !== myGen || S.over) return; // new game / give-up happened while we were waiting
-    toggleInputs(false);
-    inputsEl.children[S.len - 1].focus();
-    if (valid === false) return setMsg(`"${g.toUpperCase()}" isn't a real word.`, "err");
-    if (valid === undefined) return setMsg("Couldn't verify that word — check your connection and try again.", "err");
+    // only languages with a live dictionary API need a network round trip; list-only
+    // languages (or a word already in the curated list) resolve instantly
+    const needsCheck = ONLINE_DICT_LANGS.has(S.lang) && !WORD_SETS_BY_LANG[S.lang]?.[S.len]?.has(g);
+    const myGen = S.gen, myLang = S.lang;
+    if (needsCheck){
+      S.checking = true;
+      toggleInputs(true);
+      setMsg(t("checkingWord"));
+    }
+    const valid = await isRealWord(myLang, g);
+    if (needsCheck){
+      S.checking = false;
+      if (S.gen !== myGen || S.over) return; // new game / give-up happened while we were waiting
+      toggleInputs(false);
+      inputsEl.children[S.len - 1].focus();
+    }
+    if (valid === false) return setMsg(t("notRealWord", g.toUpperCase()), "err");
+    if (valid === undefined) return setMsg(t("cantVerify"), "err");
   }
 
   const r = score(S.secret, g);
@@ -585,8 +777,8 @@ function finish(won){
   [...inputsEl.children].forEach(i => i.disabled = true);
   bannerEl.className = "banner " + (won ? "win" : "lose");
   bannerEl.innerHTML = won
-    ? `Cracked it in ${S.guesses.length} ${S.guesses.length === 1 ? "try" : "tries"}!<b>${S.secret}</b>`
-    : `Out of tries — the code was:<b>${S.secret}</b>`;
+    ? `${t("crackedIn", S.guesses.length, t("triesWord", S.guesses.length))}<b>${S.secret}</b>`
+    : `${t("outOfTries")}<b>${S.secret}</b>`;
   setMsg("");
 
   S.played++;
@@ -600,14 +792,6 @@ function finish(won){
 }
 
 /* ---------------- Celebration ---------------- */
-const RANKS = [
-  [1, "Unbelievable!", "First try. That was pure magic."],
-  [3, "Outstanding!",  "You read that code like a book."],
-  [5, "Brilliant!",    "Sharp deduction — barely broke a sweat."],
-  [8, "Well played!",  "Solid logic all the way through."],
-  [99,"Congratulations!", "Down to the wire, but you got there."]
-];
-
 function showOverlay(won){
   const n = S.guesses.length;
   const modal = $("modal");
@@ -615,22 +799,22 @@ function showOverlay(won){
   $("tCore").textContent = won ? "★" : "✕";
 
   if (won){
-    const [, title, line] = RANKS.find(r => n <= r[0]);
+    const [, title, line] = t("ranks").find(r => n <= r[0]);
     $("oTitle").textContent = title;
-    $("oText").innerHTML = `${line}<br>You found it in <b>${n}</b> ${n === 1 ? "try" : "tries"}.`;
+    $("oText").innerHTML = `${line}<br>${t("foundIn", n, t("triesWord", n))}`;
   } else {
-    $("oTitle").textContent = "So close!";
-    $("oText").innerHTML = `You ran out of tries. The hidden ${S.mode === "num" ? "number" : "word"} was:`;
+    $("oTitle").textContent = t("soClose");
+    $("oText").innerHTML = S.mode === "num" ? t("ranOutNumber") : t("ranOutWord");
   }
 
   $("oReveal").innerHTML = [...S.secret]
     .map((c, i) => `<div class="chip" style="animation-delay:${i * 70}ms">${c}</div>`).join("");
 
   $("oStats").innerHTML = `
-    <div class="stat"><span>Tries</span><b>${n}/${S.max === Infinity ? "∞" : S.max}</b></div>
-    <div class="stat"><span>Streak</span><b>${S.streak}</b></div>
-    <div class="stat"><span>Best</span><b>${S.best ?? "—"}</b></div>
-    <div class="stat"><span>Won</span><b>${S.wins}/${S.played}</b></div>`;
+    <div class="stat"><span>${t("statTries")}</span><b>${n}/${S.max === Infinity ? "∞" : S.max}</b></div>
+    <div class="stat"><span>${t("statStreak")}</span><b>${S.streak}</b></div>
+    <div class="stat"><span>${t("statBest")}</span><b>${S.best ?? "—"}</b></div>
+    <div class="stat"><span>${t("statWon")}</span><b>${S.wins}/${S.played}</b></div>`;
 
   $("overlay").classList.remove("hide");
   setTimeout(() => $("againBtn").focus(), 60);
@@ -716,15 +900,15 @@ const confetti = (() => {
 })();
 
 function renderHistory(){
-  if (!S.guesses.length){ histEl.innerHTML = `<div class="empty">No guesses yet. Start typing below.</div>`; return; }
+  if (!S.guesses.length){ histEl.innerHTML = `<div class="empty">${t("emptyHistory")}</div>`; return; }
   histEl.innerHTML = S.guesses.map((g, i) => `
     <div class="guess">
       <div class="no">${i+1}</div>
       <div class="chars">${[...g.guess].map(c => `<div class="chip">${c}</div>`).join("")}</div>
       <div class="scores">
-        <div class="score g" title="right & in place"><i class="dot g"></i>${g.exact}</div>
-        <div class="score a" title="right, wrong place"><i class="dot a"></i>${g.partial}</div>
-        <div class="score r" title="not in the code"><i class="dot r"></i>${g.wrong}</div>
+        <div class="score g" title="${t("legendExact")}"><i class="dot g"></i>${g.exact}</div>
+        <div class="score a" title="${t("legendPartial")}"><i class="dot a"></i>${g.partial}</div>
+        <div class="score r" title="${t("legendWrong")}"><i class="dot r"></i>${g.wrong}</div>
       </div>
     </div>`).join("");
   histEl.scrollTop = histEl.scrollHeight;
@@ -735,12 +919,13 @@ const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-sche
 let theme = prefersLight ? "light" : "dark";
 let themeLocked = false;   // true once the user picks manually — stop following the OS
 
-function applyTheme(t){
-  theme = t;
-  document.documentElement.setAttribute("data-theme", t);
+function applyTheme(newTheme){
+  theme = newTheme;
+  document.documentElement.setAttribute("data-theme", newTheme);
   const b = $("themeBtn");
-  b.textContent = t === "dark" ? "☾" : "☀";
-  b.title = t === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  b.textContent = newTheme === "dark" ? "☾" : "☀";
+  b.title = newTheme === "dark" ? t("themeToLight") : t("themeToDark");
+  b.setAttribute("aria-label", t("themeAria"));
 }
 applyTheme(theme);
 
@@ -749,6 +934,35 @@ if (window.matchMedia){
   const onChange = e => { if (!themeLocked) applyTheme(e.matches ? "light" : "dark"); };
   mq.addEventListener ? mq.addEventListener("change", onChange) : mq.addListener(onChange);
 }
+
+/* ---------------- Language ---------------- */
+function applyLanguage(lang){
+  S.lang = lang;
+  const L = I18N[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = L.dir;
+  $("subtitle").textContent = L.subtitle;
+  $("menuBtn").title = L.menuTitle;
+  $("menuBtn").setAttribute("aria-label", L.menuAria);
+  applyTheme(theme); // re-applies the theme button's tooltip/aria-label in the new language
+  $("modeLabel").textContent = L.modeLabel;
+  $("numbersBtn").textContent = L.numbersBtn;
+  $("wordsBtn").textContent = L.wordsBtn;
+  $("settingsLabel").textContent = L.settingsLabel;
+  langSel.title = L.langLabel;
+  $("triesLeftLabel").textContent = L.triesLeftLabel;
+  $("legendExact").textContent = L.legendExact;
+  $("legendPartial").textContent = L.legendPartial;
+  $("legendWrong").textContent = L.legendWrong;
+  $("newBtn").textContent = L.newGameBtn;
+  $("giveBtn").textContent = L.giveUpBtn;
+  $("footer").innerHTML = `${L.footerHint1}<br>${L.footerWordHint}`;
+  $("againBtn").textContent = L.playAgainBtn;
+  $("playAgainHint").textContent = L.playAgainHint;
+  buildDiffOptions();
+  buildLenOptions();
+}
+langSel.addEventListener("change", () => { applyLanguage(langSel.value); newGame(); });
 
 /* ---------------- Menu ---------------- */
 const menuBtn = $("menuBtn"), settingsPanel = $("settingsPanel");
@@ -784,7 +998,7 @@ document.addEventListener("keydown", e => {
 
   // typing anywhere on the page drops the character into the next empty box
   if (S.over || S.checking || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
-  const valid = S.mode === "num" ? /^[0-9]$/ : /^[a-zA-Z]$/;
+  const valid = S.mode === "num" ? /^[0-9]$/ : letterRegex();
   if (!valid.test(e.key)) return;
   const cells = [...inputsEl.children];
   if (cells.includes(document.activeElement)) return;   // already typing in a box
@@ -795,7 +1009,7 @@ document.addEventListener("keydown", e => {
   setMsg("");
 });
 
-buildLenOptions();
+applyLanguage(S.lang);
 newGame();
 </script>
 </body>
