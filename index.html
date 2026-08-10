@@ -157,7 +157,7 @@
   .status .pill{background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:var(--muted)}
   .status .pill b{color:var(--text)}
 
-  .inputs{display:flex;gap:var(--cell-gap,8px);justify-content:center;flex-wrap:wrap;margin:4px 0 14px}
+  .inputs{display:flex;gap:var(--cell-gap,8px);justify-content:center;flex-wrap:nowrap;margin:4px 0 14px}
   .cell{
     width:var(--cell-w,52px);height:var(--cell-h,60px);text-align:center;
     font-size:var(--cell-fs,26px);font-weight:700;text-transform:uppercase;
@@ -816,9 +816,12 @@ function sizeCells(){
   if (w > MAX_W) w = MAX_W;
   else if (w < MIN_W){
     gap = MIN_GAP;
-    w = Math.max(MIN_W, Math.min(MAX_W, (avail - (n - 1) * gap) / n));
+    // no lower clamp here on purpose: .inputs is nowrap now, so this must always fit
+    // avail exactly, even below MIN_W in extreme narrow+long-code cases — a slightly
+    // tighter-than-ideal box beats wrapping to a second row.
+    w = Math.min(MAX_W, (avail - (n - 1) * gap) / n);
   }
-  w = Math.floor(w);
+  w = Math.max(1, Math.floor(w));
   inputsEl.style.setProperty("--cell-w", w + "px");
   inputsEl.style.setProperty("--cell-h", Math.round(w * (MAX_H / MAX_W)) + "px");
   inputsEl.style.setProperty("--cell-fs", Math.max(14, Math.round(w * (26 / 52))) + "px");
