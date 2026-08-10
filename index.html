@@ -156,7 +156,7 @@
   .msg.err{color:var(--red)}
   .msg.ok{color:var(--green)}
 
-  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px}
+  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px;padding-top:14px;border-top:1px solid var(--line)}
   .legend span{display:flex;align-items:center;gap:6px}
   .dot{width:10px;height:10px;border-radius:50%}
   .dot.g{background:var(--green)}.dot.a{background:var(--amber)}.dot.r{background:var(--red)}
@@ -337,9 +337,7 @@
   <div class="card" id="playCard">
     <div class="inputs" id="inputs"></div>
     <div class="msg" id="msg"></div>
-  </div>
 
-  <div class="card">
     <div class="legend">
       <span><i class="dot g"></i> right &amp; in place</span>
       <span><i class="dot a"></i> right, wrong place</span>
