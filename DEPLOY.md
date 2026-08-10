@@ -68,6 +68,71 @@ automatic redeploys and version history, but it works in about ten seconds.
 
 ---
 
+## Multiplayer backend
+
+The race mode (create/join a room, live guessing) needs the Worker in
+[`worker/`](worker/) deployed separately from the static site. It's a normal Cloudflare
+Worker — no database, just one Durable Object per room code.
+
+1. **Install Wrangler and log in** (once):
+
+   ```bash
+   cd worker
+   npm install
+   npx wrangler login
+   ```
+
+2. **Deploy it:**
+
+   ```bash
+   npx wrangler deploy
+   ```
+
+   Wrangler prints a URL like `https://find-it-api.<your-subdomain>.workers.dev` —
+   that's your `API_BASE`.
+
+3. **Point the frontend at it.** Open `index.html`, find this line near the end of the
+   `<script>` block (search for `API_BASE`):
+
+   ```js
+   const API_BASE = "https://find-it-api.YOUR-SUBDOMAIN.workers.dev";
+   ```
+
+   Replace it with the URL from step 2, then commit and push (or re-upload) so the
+   deployed static site picks it up.
+
+4. **(Optional, recommended) lock down CORS.** By default the Worker accepts requests
+   from any origin (`ALLOWED_ORIGIN = "*"` in `worker/src/index.js`) so it's easy to
+   test locally. Once you know your Pages URL, set it there instead:
+
+   ```js
+   const ALLOWED_ORIGIN = "https://find-it.pages.dev";
+   ```
+
+   and redeploy the Worker (`npx wrangler deploy`).
+
+### Local testing
+
+```bash
+cd worker
+npm run dev        # starts the Worker on http://localhost:8787
+```
+
+Point `API_BASE` in `index.html` at `http://localhost:8787` while testing, then switch
+it back to your deployed URL before shipping.
+
+### How it works
+
+- Rooms don't live in a database — a room code (e.g. `042817`) deterministically maps
+  to one Durable Object instance (`env.ROOMS.idFromName(code)`), which holds that
+  room's secret, players, and live WebSocket connections in memory + its own storage.
+- Player identity is just a `crypto.randomUUID()` generated in the browser on first
+  sign-up and kept in `localStorage` — no accounts, no passwords, nothing server-side
+  to manage.
+- An abandoned room's Durable Object storage self-deletes ~2 hours after creation via
+  a Durable Object alarm, so nothing needs manual cleanup.
+- Costs: Workers + Durable Objects free tier comfortably covers casual/small-group use.
+
 ## Custom domain
 
 Pages dashboard → your project → **Custom domains** → *Set up a domain*. If the domain

@@ -11,3 +11,6 @@ desktop.ini
 # Logs / deps (not used, but keeps the repo clean if you add tooling later)
 node_modules/
 npm-debug.log*
+
+# Wrangler local cache/dev state (worker/.wrangler and the repo-root one)
+.wrangler/

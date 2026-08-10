@@ -330,6 +330,61 @@
     .stat b{font-size:17px}
     .reveal .chip{width:36px;height:42px;font-size:18px}
   }
+
+  /* ============ MULTIPLAYER ============ */
+  .mp-modal{position:relative;max-width:460px;max-height:88vh;overflow-y:auto}
+  .mp-close{
+    position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);background:var(--raise);color:var(--muted);
+    font-size:13px;cursor:pointer;transition:.15s;
+  }
+  .mp-close:hover{color:var(--red);border-color:var(--red-b)}
+  html[dir="rtl"] .mp-close{right:auto;left:14px}
+  .mp-screen h2{margin-top:0}
+  .mp-sub{color:var(--muted);font-size:13.5px;line-height:1.5;margin:0 0 16px}
+  .mp-name-input{
+    width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;
+    border:1px solid var(--line);background:var(--sunk);color:var(--text);
+    font-size:15px;margin-bottom:12px;
+  }
+  .mp-name-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--focus)}
+  .mp-edit{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;vertical-align:middle;padding:2px 6px}
+  .mp-edit:hover{color:var(--accent)}
+  .mp-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11.5px;margin:18px 0 10px;text-transform:uppercase;letter-spacing:.6px}
+  .mp-divider::before,.mp-divider::after{content:"";flex:1;height:1px;background:var(--line)}
+  .mp-hint{color:var(--muted);font-size:12.5px;text-align:center;margin:10px 0}
+  .mp-code-inputs{margin:6px 0 14px}
+
+  .code-big{display:flex;gap:8px;justify-content:center;margin:4px 0 18px;flex-wrap:wrap}
+  .code-big span{
+    width:44px;height:54px;display:flex;align-items:center;justify-content:center;
+    background:var(--sunk);border:2px solid var(--accent);border-radius:10px;
+    font-size:24px;font-weight:800;letter-spacing:.5px;
+  }
+
+  .mp-players{display:flex;flex-direction:column;gap:8px;margin:14px 0;text-align:left}
+  html[dir="rtl"] .mp-players{text-align:right}
+  .mp-player{
+    display:flex;align-items:center;gap:10px;
+    background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;
+  }
+  .mp-player.me{border-color:var(--accent)}
+  .mp-player.solved{border-color:var(--green-b)}
+  .mp-player.winner{border-color:var(--green-b);background:linear-gradient(180deg,var(--raise),var(--panel))}
+  .mp-player .mp-name{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mp-player .mp-tag{
+    flex:none;font-size:10px;padding:3px 8px;border-radius:999px;
+    background:var(--sunk);color:var(--accent);border:1px solid var(--line);
+    text-transform:uppercase;letter-spacing:.4px;
+  }
+  .mp-player .mp-attempts{flex:none;color:var(--muted);font-size:12.5px}
+  .mp-player.solved .mp-attempts{color:var(--green);font-weight:700}
+
+  @media (max-width:560px){
+    .mp-modal{padding:22px 16px}
+    .code-big span{width:36px;height:46px;font-size:19px}
+  }
 </style>
 </head>
 <body>
@@ -363,6 +418,9 @@
           <select id="diffSel" title="Difficulty"></select>
           <button class="btn primary" id="newBtn">New game</button>
           <button class="btn" id="giveBtn">Give up</button>
+        </div>
+        <div class="row">
+          <button class="btn" id="onlineBtn" style="width:100%">🌐 Play online — race a friend</button>
         </div>
       </div>
     </div>
@@ -410,6 +468,70 @@
     <div class="stats" id="oStats"></div>
     <button class="btn primary" id="againBtn">Play again</button>
     <p class="hint" id="playAgainHint">Press Enter to play again · Esc to review the board</p>
+  </div>
+</div>
+
+<div class="overlay hide" id="mpOverlay">
+  <div class="modal mp-modal" id="mpModal">
+    <button class="mp-close" id="mpCloseBtn" type="button" aria-label="Close">✕</button>
+
+    <!-- Sign up: pick a name, get a permanent device-local player id -->
+    <div class="mp-screen" id="mpAuth">
+      <h2>Play online</h2>
+      <p class="mp-sub">Pick a name — you'll get a unique player ID on this device, no password needed.</p>
+      <input class="mp-name-input" id="mpNameInput" maxlength="20" placeholder="Your name" autocomplete="off">
+      <div class="msg err hide" id="mpAuthMsg"></div>
+      <button class="btn primary" id="mpAuthBtn" type="button" style="width:100%">Continue</button>
+    </div>
+
+    <!-- Home: create or join a room -->
+    <div class="mp-screen hide" id="mpHome">
+      <h2>Hey, <span id="mpHomeName"></span> <button class="mp-edit" id="mpEditNameBtn" type="button" title="Change name">✎ edit</button></h2>
+      <p class="mp-sub" id="mpHomeSettings"></p>
+      <button class="btn primary" id="mpCreateBtn" type="button" style="width:100%">Create a room</button>
+      <div class="mp-divider"><span>or join with a code</span></div>
+      <div class="inputs mp-code-inputs" id="mpJoinInputs"></div>
+      <div class="msg err hide" id="mpHomeMsg"></div>
+      <button class="btn" id="mpJoinBtn" type="button" style="width:100%">Join room</button>
+    </div>
+
+    <!-- Lobby: waiting room, shows the 6-digit code -->
+    <div class="mp-screen hide" id="mpLobby">
+      <h2>Room code</h2>
+      <div class="code-big" id="mpCodeBig"></div>
+      <button class="btn" id="mpCopyBtn" type="button" style="width:100%">Copy code</button>
+      <div class="mp-players" id="mpLobbyPlayers"></div>
+      <button class="btn primary hide" id="mpStartBtn" type="button" style="width:100%">Start race</button>
+      <p class="mp-hint hide" id="mpWaitHint">Waiting for the host to start…</p>
+      <button class="btn" id="mpLeaveLobbyBtn" type="button" style="width:100%;margin-top:10px">Leave room</button>
+    </div>
+
+    <!-- Race: same code, everyone guesses at once, first exact match wins -->
+    <div class="mp-screen hide" id="mpRace">
+      <div class="status">
+        <div class="pill" id="mpRaceModePill"></div>
+        <div class="pill"><span>Your tries</span> <b id="mpMyAttempts">0</b></div>
+      </div>
+      <div class="mp-players" id="mpRacePlayers"></div>
+      <div class="divider"></div>
+      <div class="history" id="mpHistory"><div class="empty">No guesses yet.</div></div>
+      <div class="divider"></div>
+      <div class="inputs" id="mpInputs"></div>
+      <div class="msg" id="mpMsg"></div>
+      <button class="btn" id="mpLeaveRaceBtn" type="button" style="width:100%;margin-top:10px">Leave race</button>
+    </div>
+
+    <!-- Result: reveal + standings -->
+    <div class="mp-screen hide" id="mpResult">
+      <div class="trophy"><div class="ring"></div><div class="core" id="mpTrophyCore">★</div></div>
+      <h2 id="mpResultTitle"></h2>
+      <p id="mpResultText"></p>
+      <div class="reveal" id="mpReveal"></div>
+      <div class="mp-players" id="mpStandings"></div>
+      <button class="btn primary hide" id="mpRematchBtn" type="button" style="width:100%">Play again</button>
+      <p class="mp-hint hide" id="mpRematchHint">Waiting for the host to start a new round…</p>
+      <button class="btn" id="mpLeaveResultBtn" type="button" style="width:100%;margin-top:10px">Back to home</button>
+    </div>
   </div>
 </div>
 
@@ -1118,6 +1240,7 @@ $("giveBtn").addEventListener("click", () => { if (!S.over) finish(false); });
 $("againBtn").addEventListener("click", newGame);
 $("overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeOverlay(); });
 document.addEventListener("keydown", e => {
+  if (!$("mpOverlay").classList.contains("hide")) return; // multiplayer overlay handles its own keys
   if (e.key === "Enter"){ e.preventDefault(); if (!S.checking) S.over ? newGame() : submit(); return; }
   if (e.key === "Escape"){ closeOverlay(); return; }
 
@@ -1133,6 +1256,352 @@ document.addEventListener("keydown", e => {
   (cells[cells.indexOf(cell) + 1] || cell).focus();
   setMsg("");
 });
+
+/* ================================================================
+   MULTIPLAYER — race a friend to crack the same shared code first.
+   Backed by a Cloudflare Worker + Durable Object (see /worker).
+   Set API_BASE to your deployed Worker URL after `wrangler deploy` —
+   see DEPLOY.md → "Multiplayer backend". Everything below is additive
+   and never touches single-player state (S).
+   ================================================================ */
+const API_BASE = "https://find-it-api.nizarh393.workers.dev";
+
+const MP = { me: null, ws: null, code: null, room: null, myGuesses: [], reconnecting: false };
+const mp$ = id => document.getElementById(id);
+
+function mpLoadIdentity(){
+  try {
+    const raw = localStorage.getItem("findit_player");
+    if (raw) MP.me = JSON.parse(raw);
+  } catch {}
+  if (!MP.me || !MP.me.id){
+    const id = (crypto.randomUUID ? crypto.randomUUID() : "p-" + Date.now() + "-" + Math.random().toString(36).slice(2));
+    MP.me = { id, nickname: "" };
+  }
+}
+function mpSaveIdentity(){ localStorage.setItem("findit_player", JSON.stringify(MP.me)); }
+function mpEsc(s){ return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+function mpShow(screen){
+  ["mpAuth","mpHome","mpLobby","mpRace","mpResult"].forEach(id => mp$(id).classList.toggle("hide", id !== screen));
+  if (screen !== "mpResult") mp$("mpModal").classList.remove("win", "lose");
+}
+
+function mpOpen(){
+  mpLoadIdentity();
+  mp$("mpOverlay").classList.remove("hide");
+  if (!MP.me.nickname){
+    mpShow("mpAuth");
+    mp$("mpAuthMsg").classList.add("hide");
+    setTimeout(() => mp$("mpNameInput").focus(), 50);
+  } else if (MP.room){
+    mpRenderFromRoom(); // reopening mid-game — just re-show whatever screen matches current state
+  } else {
+    mpRenderHome();
+    mpShow("mpHome");
+  }
+}
+function mpClose(){ mp$("mpOverlay").classList.add("hide"); } // hides only; the socket/game keeps running
+
+mp$("onlineBtn").addEventListener("click", () => { mpOpen(); setMenu(false); });
+mp$("mpCloseBtn").addEventListener("click", mpClose);
+mp$("mpOverlay").addEventListener("click", e => { if (e.target === e.currentTarget) mpClose(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !mp$("mpOverlay").classList.contains("hide")) mpClose(); });
+
+/* ---- Sign up ---- */
+function mpSubmitName(){
+  const name = mp$("mpNameInput").value.trim().slice(0, 20);
+  if (!name){
+    mp$("mpAuthMsg").textContent = "Enter a name to continue.";
+    mp$("mpAuthMsg").classList.remove("hide");
+    return;
+  }
+  MP.me.nickname = name;
+  mpSaveIdentity();
+  mp$("mpAuthMsg").classList.add("hide");
+  mpRenderHome();
+  mpShow("mpHome");
+}
+mp$("mpAuthBtn").addEventListener("click", mpSubmitName);
+mp$("mpNameInput").addEventListener("keydown", e => { if (e.key === "Enter") mpSubmitName(); });
+mp$("mpEditNameBtn").addEventListener("click", () => {
+  mp$("mpNameInput").value = MP.me.nickname;
+  mp$("mpAuthMsg").classList.add("hide");
+  mpShow("mpAuth");
+  setTimeout(() => mp$("mpNameInput").focus(), 50);
+});
+
+/* ---- Home: create or join ---- */
+function mpModeSummary(){
+  return S.mode === "num" ? t("digitsSuffix", S.len) : t("wordSuffixList", S.len);
+}
+function mpRenderHome(){
+  mp$("mpHomeName").textContent = MP.me.nickname;
+  mp$("mpHomeSettings").textContent = "New rooms use your current Mode/Settings (" + mpModeSummary() + "). Everyone races the same hidden code — first exact match wins.";
+  mpBuildCodeInputs();
+}
+function mpBuildCodeInputs(){
+  const el = mp$("mpJoinInputs");
+  el.innerHTML = "";
+  for (let i = 0; i < 6; i++){
+    const inp = document.createElement("input");
+    inp.className = "cell"; inp.maxLength = 1; inp.inputMode = "numeric"; inp.autocomplete = "off";
+    inp.addEventListener("input", () => {
+      inp.value = /^[0-9]$/.test(inp.value) ? inp.value : "";
+      if (inp.value && i < 5) el.children[i + 1].focus();
+    });
+    inp.addEventListener("keydown", e => {
+      if (e.key === "Backspace" && !inp.value && i > 0) el.children[i - 1].focus();
+      else if (e.key === "Enter") mpJoin();
+    });
+    inp.addEventListener("paste", e => {
+      e.preventDefault();
+      const clean = (e.clipboardData.getData("text") || "").replace(/\D/g, "");
+      for (let k = 0; k + i < 6 && k < clean.length; k++) el.children[i + k].value = clean[k];
+      el.children[Math.min(5, i + clean.length)].focus();
+    });
+    el.appendChild(inp);
+  }
+}
+function mpReadCode(){ return [...mp$("mpJoinInputs").children].map(i => i.value).join(""); }
+
+async function mpCreate(){
+  mp$("mpHomeMsg").classList.add("hide");
+  mp$("mpCreateBtn").disabled = true;
+  try {
+    const res = await fetch(API_BASE + "/api/rooms", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: S.mode, len: S.len, lang: S.lang, hostId: MP.me.id, hostName: MP.me.nickname }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Could not create room");
+    mpConnect(data.code);
+  } catch {
+    mp$("mpHomeMsg").textContent = "Couldn't reach the game server. Check your connection and try again.";
+    mp$("mpHomeMsg").classList.remove("hide");
+  } finally {
+    mp$("mpCreateBtn").disabled = false;
+  }
+}
+function mpJoin(){
+  const code = mpReadCode();
+  if (code.length !== 6){
+    mp$("mpHomeMsg").textContent = "Enter the 6-digit room code.";
+    mp$("mpHomeMsg").classList.remove("hide");
+    return;
+  }
+  mp$("mpHomeMsg").classList.add("hide");
+  mpConnect(code);
+}
+mp$("mpCreateBtn").addEventListener("click", mpCreate);
+mp$("mpJoinBtn").addEventListener("click", mpJoin);
+
+/* ---- Connection ---- */
+function mpConnect(code){
+  MP.code = code;
+  if (MP.ws){ try { MP.ws.close(); } catch {} }
+  const wsUrl = API_BASE.replace(/^http/, "ws") + `/api/rooms/${code}/socket?playerId=${encodeURIComponent(MP.me.id)}&nickname=${encodeURIComponent(MP.me.nickname)}`;
+  const ws = new WebSocket(wsUrl);
+  MP.ws = ws;
+  MP.myGuesses = [];
+
+  ws.addEventListener("message", ev => {
+    let data; try { data = JSON.parse(ev.data); } catch { return; }
+    if (data.type === "state") mpOnState(data);
+    else if (data.type === "result") mpOnResult(data);
+  });
+  ws.addEventListener("close", () => {
+    if (MP.ws !== ws) return; // superseded by a newer connection
+    if (!MP.room){
+      mp$("mpHomeMsg").textContent = "Couldn't join that room — check the code, or it may have already started.";
+      mp$("mpHomeMsg").classList.remove("hide");
+      MP.code = null; MP.ws = null;
+      return;
+    }
+    if (MP.code && !MP.reconnecting){
+      MP.reconnecting = true;
+      setTimeout(() => { MP.reconnecting = false; if (MP.code) mpConnect(MP.code); }, 1500);
+    }
+  });
+  ws.addEventListener("error", () => {});
+}
+
+function mpOnResult(data){
+  MP.myGuesses.push(data);
+  mpRenderRaceHistory();
+  const el = mp$("mpInputs");
+  [...el.children].forEach(c => c.value = "");
+  if (el.children[0]) el.children[0].focus();
+}
+
+function mpOnState(data){
+  const enteringRace = data.status === "playing" && (!MP.room || MP.room.status !== "playing");
+  MP.room = data;
+  if (enteringRace) MP.myGuesses = [];
+  mpRenderFromRoom();
+  if (enteringRace){
+    const el = mp$("mpInputs");
+    [...el.children].forEach(c => c.value = "");
+    if (el.children[0]) el.children[0].focus();
+  }
+}
+
+function mpRenderFromRoom(){
+  const room = MP.room;
+  if (!room) return;
+  mp$("mpOverlay").classList.remove("hide");
+  if (room.status === "waiting"){ mpRenderLobby(); mpShow("mpLobby"); }
+  else if (room.status === "playing"){ mpRenderRace(); mpShow("mpRace"); }
+  else { mpRenderResult(); mpShow("mpResult"); }
+}
+
+/* ---- Lobby ---- */
+function mpRenderLobby(){
+  const room = MP.room;
+  mp$("mpCodeBig").innerHTML = [...MP.code].map(d => `<span>${d}</span>`).join("");
+  mp$("mpLobbyPlayers").innerHTML = room.players.map(p => `
+    <div class="mp-player${p.id === MP.me.id ? " me" : ""}">
+      <span class="mp-name">${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
+      ${p.id === room.hostId ? '<span class="mp-tag">host</span>' : ""}
+    </div>`).join("");
+  const isHost = room.hostId === MP.me.id;
+  mp$("mpStartBtn").classList.toggle("hide", !isHost);
+  mp$("mpWaitHint").classList.toggle("hide", isHost);
+}
+mp$("mpCopyBtn").addEventListener("click", () => {
+  if (!MP.code) return;
+  navigator.clipboard?.writeText(MP.code).then(() => {
+    const btn = mp$("mpCopyBtn"); const old = btn.textContent;
+    btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = old; }, 1200);
+  }).catch(() => {});
+});
+mp$("mpStartBtn").addEventListener("click", () => { if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "start" })); });
+mp$("mpLeaveLobbyBtn").addEventListener("click", mpLeaveRoom);
+mp$("mpLeaveRaceBtn").addEventListener("click", mpLeaveRoom);
+mp$("mpLeaveResultBtn").addEventListener("click", mpLeaveRoom);
+
+function mpLeaveRoom(){
+  if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "leave" }));
+  if (MP.ws){ try { MP.ws.close(); } catch {} }
+  MP.ws = null; MP.room = null; MP.code = null; MP.myGuesses = [];
+  mpRenderHome();
+  mpShow("mpHome");
+}
+
+/* ---- Race ---- */
+function mpLetterRegex(lang){
+  return lang === "ar" ? /^[ء-ي]$/ : lang === "fr" ? /^[a-zàâäéèêëïîôöùûüÿçœæ]$/i : /^[a-zA-Z]$/;
+}
+let mpBuiltLen = null;
+function mpBuildRaceInputs(){
+  const room = MP.room;
+  const el = mp$("mpInputs");
+  if (mpBuiltLen === room.len && el.children.length === room.len) return;
+  mpBuiltLen = room.len;
+  el.innerHTML = "";
+  for (let i = 0; i < room.len; i++){
+    const inp = document.createElement("input");
+    inp.className = "cell"; inp.maxLength = 1; inp.autocomplete = "off"; inp.spellcheck = false;
+    if (room.mode === "num") inp.inputMode = "numeric";
+    inp.addEventListener("input", () => {
+      const ok = room.mode === "num" ? /^[0-9]$/ : mpLetterRegex(room.lang);
+      inp.value = ok.test(inp.value) ? inp.value.toUpperCase() : "";
+      if (inp.value && i < room.len - 1) el.children[i + 1].focus();
+    });
+    inp.addEventListener("keydown", e => {
+      if (e.key === "Backspace" && !inp.value && i > 0) el.children[i - 1].focus();
+      else if (e.key === "Enter") mpSubmitGuess();
+    });
+    inp.addEventListener("focus", () => inp.select());
+    el.appendChild(inp);
+  }
+}
+function mpSizeRaceCells(){
+  const el = mp$("mpInputs");
+  const avail = el.clientWidth; if (!avail) return;
+  const n = Math.max(1, MP.room ? MP.room.len : 4);
+  const MAX_W = 52, MAX_H = 60, MAX_GAP = 8, MIN_W = 30, MIN_GAP = 4;
+  let gap = MAX_GAP, w = (avail - (n - 1) * gap) / n;
+  if (w > MAX_W) w = MAX_W;
+  else if (w < MIN_W){ gap = MIN_GAP; w = Math.max(MIN_W, Math.min(MAX_W, (avail - (n - 1) * gap) / n)); }
+  w = Math.floor(w);
+  el.style.setProperty("--cell-w", w + "px");
+  el.style.setProperty("--cell-h", Math.round(w * (MAX_H / MAX_W)) + "px");
+  el.style.setProperty("--cell-fs", Math.max(14, Math.round(w * (26 / 52))) + "px");
+  el.style.setProperty("--cell-gap", gap + "px");
+}
+addEventListener("resize", () => { if (MP.room && MP.room.status === "playing") mpSizeRaceCells(); });
+
+function mpRenderRace(){
+  const room = MP.room;
+  mpBuildRaceInputs();
+  mpSizeRaceCells();
+  mp$("mpRaceModePill").textContent = room.mode === "num" ? t("digitsSuffix", room.len) : `${room.len}-letter word`;
+  const me = room.players.find(p => p.id === MP.me.id);
+  mp$("mpMyAttempts").textContent = me ? me.attempts : 0;
+  mp$("mpRacePlayers").innerHTML = room.players.map(p => `
+    <div class="mp-player${p.solved ? " solved" : ""}${p.id === MP.me.id ? " me" : ""}">
+      <span class="mp-name">${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
+      ${p.id === room.hostId ? '<span class="mp-tag">host</span>' : ""}
+      <span class="mp-attempts">${p.solved ? "#" + p.rank + " · " : ""}${p.attempts} ${p.attempts === 1 ? "try" : "tries"}</span>
+    </div>`).join("");
+  mpRenderRaceHistory();
+  toggleMpInputs(!!(me && me.solved));
+}
+function toggleMpInputs(disabled){ [...mp$("mpInputs").children].forEach(i => i.disabled = disabled); }
+function mpRenderRaceHistory(){
+  const el = mp$("mpHistory");
+  if (!MP.myGuesses.length){ el.innerHTML = `<div class="empty">No guesses yet.</div>`; return; }
+  el.innerHTML = MP.myGuesses.map((g, gi) => `
+    <div class="guess">
+      <div class="no">${gi + 1}</div>
+      <div class="chars">${[...g.guess].map(c => `<div class="chip">${mpEsc(c)}</div>`).join("")}</div>
+      <div class="scores">
+        <div class="score g"><i class="dot g"></i>${g.result.exact}</div>
+        <div class="score a"><i class="dot a"></i>${g.result.partial}</div>
+        <div class="score r"><i class="dot r"></i>${g.result.wrong}</div>
+      </div>
+    </div>`).join("");
+  el.scrollTop = el.scrollHeight;
+}
+function mpSubmitGuess(){
+  const room = MP.room; if (!room || room.status !== "playing") return;
+  const me = room.players.find(p => p.id === MP.me.id);
+  if (me && me.solved) return;
+  const el = mp$("mpInputs");
+  const guess = [...el.children].map(i => i.value).join("").toLowerCase();
+  if (guess.length !== room.len){
+    mp$("mpMsg").textContent = "Fill all the boxes."; mp$("mpMsg").className = "msg err";
+    return;
+  }
+  mp$("mpMsg").textContent = "";
+  if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "guess", value: guess }));
+}
+
+/* ---- Result ---- */
+function mpRenderResult(){
+  const room = MP.room;
+  const won = room.winnerId === MP.me.id;
+  mp$("mpModal").classList.toggle("win", won);
+  mp$("mpModal").classList.toggle("lose", !won);
+  mp$("mpTrophyCore").textContent = won ? "★" : "🏁";
+  const winner = room.players.find(p => p.id === room.winnerId);
+  mp$("mpResultTitle").textContent = won ? "You won! 🎉" : (winner ? `${winner.nickname} won the race` : "Round over");
+  mp$("mpResultText").textContent = won ? "You cracked it first." : "Better luck next round.";
+  mp$("mpReveal").innerHTML = room.secret
+    ? [...room.secret].map((c, i) => `<div class="chip" style="animation-delay:${i * 70}ms">${mpEsc(c.toUpperCase())}</div>`).join("")
+    : "";
+  mp$("mpStandings").innerHTML = room.players.map(p => `
+    <div class="mp-player${p.solved ? " solved" : ""}${p.id === room.winnerId ? " winner" : ""}${p.id === MP.me.id ? " me" : ""}">
+      <span class="mp-name">${p.solved ? "#" + p.rank + " " : ""}${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
+      <span class="mp-attempts">${p.attempts} ${p.attempts === 1 ? "try" : "tries"}</span>
+    </div>`).join("");
+  const isHost = room.hostId === MP.me.id;
+  mp$("mpRematchBtn").classList.toggle("hide", !isHost);
+  mp$("mpRematchHint").classList.toggle("hide", isHost);
+}
+mp$("mpRematchBtn").addEventListener("click", () => { if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "rematch" })); });
 
 applyLanguage(S.lang);
 newGame();
