@@ -218,9 +218,11 @@
   .chip.mark-g{background:var(--mark-g-bg);border-color:var(--mark-g-line);color:var(--mark-g-text)}
   .chip.mark-a{background:var(--mark-a-bg);border-color:var(--mark-a-line);color:var(--mark-a-text)}
   .chip.mark-r{background:var(--mark-r-bg);border-color:var(--mark-r-line);color:var(--mark-r-text)}
-  .scores{display:flex;gap:6px;flex:none}
+  /* same idea as .guess .chars: shrink to fit the row instead of forcing an overflow —
+     min-width:0 drops each badge's content floor so they compress before anything wraps */
+  .scores{display:flex;gap:6px;flex-shrink:1;min-width:0}
   .score{
-    display:flex;align-items:center;gap:5px;min-width:44px;justify-content:center;
+    display:flex;align-items:center;gap:5px;min-width:0;flex-shrink:1;justify-content:center;
     border-radius:8px;padding:6px 8px;font-weight:700;font-size:14px;
     border:1px solid var(--line);background:var(--sunk);
   }
@@ -323,7 +325,7 @@
     .guess .chars{gap:5px}
     .chip{width:30px;height:33px;font-size:15px;border-radius:7px}
     .scores{gap:5px}
-    .score{min-width:38px;padding:5px 7px;font-size:13px}
+    .score{padding:5px 7px;font-size:13px}
     .row-clear{width:22px;height:22px;font-size:11px}
 
     .overlay{padding:14px}
