@@ -195,7 +195,10 @@
   }
   @keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
   .guess .no{color:var(--muted);font-size:12px;width:22px;text-align:center;flex:none}
-  .guess .chars{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+  /* nowrap + min-width:0 so chips shrink to fit the row instead of wrapping to a 2nd line;
+     the chip rule below lets each one shrink with them (a single glyph has room to spare) */
+  .guess .chars{display:flex;gap:6px;flex:1;flex-wrap:nowrap;min-width:0}
+  .guess .chars .chip{flex-shrink:1;min-width:0}
   .row-clear{
     flex:none;width:26px;height:26px;border-radius:7px;
     display:flex;align-items:center;justify-content:center;
