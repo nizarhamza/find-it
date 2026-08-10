@@ -137,17 +137,17 @@
   .btn.primary:hover{filter:brightness(1.1);color:var(--on-accent)}
   .btn:disabled{opacity:.45;cursor:not-allowed}
 
-  .status{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px}
+  .status{display:flex;justify-content:space-between;align-items:center;gap:12px 10px;font-size:14px;flex-wrap:wrap}
   .status .pill{background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:var(--muted)}
   .status .pill b{color:var(--text)}
 
-  .inputs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:4px 0 14px}
+  .inputs{display:flex;gap:var(--cell-gap,8px);justify-content:center;flex-wrap:wrap;margin:4px 0 14px}
   .cell{
-    width:52px;height:60px;text-align:center;
-    font-size:26px;font-weight:700;text-transform:uppercase;
+    width:var(--cell-w,52px);height:var(--cell-h,60px);text-align:center;
+    font-size:var(--cell-fs,26px);font-weight:700;text-transform:uppercase;
     background:var(--sunk);color:var(--text);
     border:2px solid var(--line);border-radius:12px;
-    caret-color:var(--accent);transition:.15s;
+    caret-color:var(--accent);transition:width .15s,height .15s;
   }
   .cell:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--focus)}
   .cell:disabled{opacity:.5}
@@ -262,6 +262,37 @@
 
   .hide{display:none !important}
   footer{text-align:center;color:var(--muted);font-size:12px;margin-top:10px;line-height:1.7}
+
+  /* ============ MOBILE ============ */
+  @media (max-width:560px){
+    body{padding:16px 10px 40px}
+    h1{font-size:clamp(26px,8vw,34px)}
+    .sub{font-size:13px}
+    .theme-btn{width:38px;height:38px;font-size:17px;top:0}
+    .card{padding:13px;border-radius:12px}
+
+    /* settings row becomes a tidy 2x2 grid instead of ragged free-wrap */
+    .settings-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .settings-row .lbl{grid-column:1 / -1}
+    .settings-row select,.settings-row .btn{width:100%;min-width:0}
+    .seg{min-width:0}
+
+    .status{font-size:13px;gap:8px}
+    .status .pill{padding:6px 10px}
+
+    .guess{padding:7px 8px;gap:8px}
+    .guess .chars{gap:5px}
+    .chip{width:30px;height:33px;font-size:15px;border-radius:7px}
+    .scores{gap:5px}
+    .score{min-width:38px;padding:5px 7px;font-size:13px}
+
+    .overlay{padding:14px}
+    .modal{padding:26px 18px}
+    .modal h2{font-size:24px}
+    .stat{min-width:68px;padding:7px 10px}
+    .stat b{font-size:17px}
+    .reveal .chip{width:36px;height:42px;font-size:18px}
+  }
 </style>
 </head>
 <body>
@@ -281,7 +312,7 @@
         <button data-mode="word">Words</button>
       </div>
     </div>
-    <div class="row">
+    <div class="row settings-row">
       <label class="lbl">Settings</label>
       <select id="lenSel" title="Word length"></select>
       <select id="diffSel" title="Difficulty">
@@ -422,7 +453,30 @@ function updateLeft(){ leftEl.textContent = Math.max(0, S.max - S.guesses.length
 function setMsg(t, cls=""){ msgEl.textContent = t; msgEl.className = "msg " + cls; }
 
 /* ---------------- Input boxes ---------------- */
+/* Shrinks the cells (and their gap) just enough that S.len of them always
+   fit on a single row, on any viewport — instead of relying on wrapping. */
+function sizeCells(){
+  const avail = inputsEl.clientWidth;
+  if (!avail) return;
+  const n = Math.max(1, S.len);
+  const MAX_W = 52, MAX_H = 60, MAX_GAP = 8, MIN_W = 30, MIN_GAP = 4;
+  let gap = MAX_GAP;
+  let w = (avail - (n - 1) * gap) / n;
+  if (w > MAX_W) w = MAX_W;
+  else if (w < MIN_W){
+    gap = MIN_GAP;
+    w = Math.max(MIN_W, Math.min(MAX_W, (avail - (n - 1) * gap) / n));
+  }
+  w = Math.floor(w);
+  inputsEl.style.setProperty("--cell-w", w + "px");
+  inputsEl.style.setProperty("--cell-h", Math.round(w * (MAX_H / MAX_W)) + "px");
+  inputsEl.style.setProperty("--cell-fs", Math.max(14, Math.round(w * (26 / 52))) + "px");
+  inputsEl.style.setProperty("--cell-gap", gap + "px");
+}
+addEventListener("resize", () => sizeCells());
+
 function renderInputs(){
+  sizeCells();
   inputsEl.innerHTML = "";
   for (let i = 0; i < S.len; i++){
     const inp = document.createElement("input");
