@@ -187,21 +187,6 @@
   .msg.err{color:var(--red)}
   .msg.ok{color:var(--green)}
 
-  /* ---- on-screen keyboard ---- */
-  .keyboard{margin-top:12px}
-  .keyboard-keys{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:8px}
-  .key{
-    min-width:32px;height:40px;padding:0 8px;flex:none;
-    display:flex;align-items:center;justify-content:center;
-    background:var(--raise);border:1px solid var(--line);border-radius:8px;
-    color:var(--text);font-weight:700;font-size:14px;cursor:pointer;transition:.15s;
-  }
-  .key:hover{border-color:var(--accent);color:var(--accent)}
-  .key:active{transform:scale(.93)}
-  .key:disabled{opacity:.4;cursor:not-allowed}
-  .keyboard-actions{display:flex;gap:8px;justify-content:center}
-  .keyboard-actions .btn{flex:0 1 160px}
-
   .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px}
   .divider{border-top:1px solid var(--line);margin:14px 0}
   .legend span{display:flex;align-items:center;gap:6px}
@@ -356,8 +341,6 @@
     .reveal .chip{width:36px;height:42px;font-size:18px}
 
     .clear-btn{width:34px;height:34px;font-size:14px}
-    .key{min-width:26px;height:36px;padding:0 6px;font-size:13px}
-    .keyboard-actions .btn{flex:1 1 0;padding:10px}
   }
 </style>
 </head>
@@ -423,14 +406,6 @@
       <button class="clear-btn" id="clearMarksBtn" type="button" title="Clear colours" aria-label="Clear colours">🗑</button>
     </div>
     <div class="msg" id="msg"></div>
-
-    <div class="keyboard" id="keyboard">
-      <div class="keyboard-keys" id="keyboardKeys"></div>
-      <div class="keyboard-actions">
-        <button class="btn" id="kbBackBtn" type="button" aria-label="Backspace">⌫</button>
-        <button class="btn primary" id="kbEnterBtn" type="button">Enter</button>
-      </div>
-    </div>
   </div>
 
   <footer id="footer">
@@ -559,7 +534,7 @@ en: {
   playAgainBtn: "Play again",
   playAgainHint: "Press Enter to play again · Esc to review the board",
   triesWord: n => n === 1 ? "try" : "tries",
-  enterKey: "Enter", backspaceKey: "Backspace", clearColors: "Clear colours",
+  clearColors: "Clear colours",
 },
 fr: {
   dir: "ltr",
@@ -600,7 +575,7 @@ fr: {
   playAgainBtn: "Rejouer",
   playAgainHint: "Entrée pour rejouer · Échap pour revoir la grille",
   triesWord: n => n === 1 ? "essai" : "essais",
-  enterKey: "Entrée", backspaceKey: "Effacer", clearColors: "Effacer les couleurs",
+  clearColors: "Effacer les couleurs",
 },
 ar: {
   dir: "rtl",
@@ -641,7 +616,7 @@ ar: {
   playAgainBtn: "العب مرة أخرى",
   playAgainHint: "Enter للعب مرة أخرى · Esc لمراجعة اللوحة",
   triesWord: n => n === 1 ? "محاولة واحدة" : "محاولات",
-  enterKey: "إدخال", backspaceKey: "حذف", clearColors: "مسح الألوان",
+  clearColors: "مسح الألوان",
 }
 };
 function t(key, ...args){
@@ -690,48 +665,6 @@ function randomSecret(){
   return list[Math.floor(Math.random() * list.length)];
 }
 
-/* ---------------- On-screen keyboard ---------------- */
-// every unique letter actually used across that language's word lists — guarantees every
-// key corresponds to a letter that can appear in a real guess, in no more/no fewer than needed
-function keyboardLetters(){
-  const all = Object.values(WORDS_BY_LANG[S.lang]).flat().join("");
-  return [...new Set(all)].sort((a, b) => a.localeCompare(b, S.lang));
-}
-
-function buildKeyboard(){
-  const keysEl = $("keyboardKeys");
-  const keys = S.mode === "num" ? "0123456789".split("") : keyboardLetters();
-  keysEl.innerHTML = "";
-  for (const ch of keys){
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "key";
-    b.textContent = ch.toUpperCase();
-    b.addEventListener("click", () => pressKey(ch));
-    keysEl.appendChild(b);
-  }
-}
-
-function pressKey(ch){
-  if (S.over || S.checking) return;
-  const cells = [...inputsEl.children];
-  if (!cells.length) return;
-  const cell = cells.find(c => !c.value) || cells[cells.length - 1];
-  cell.value = ch.toUpperCase();
-  (cells[cells.indexOf(cell) + 1] || cell).focus();
-  setMsg("");
-}
-
-function pressBackspace(){
-  if (S.over || S.checking) return;
-  const cells = [...inputsEl.children];
-  if (!cells.length) return;
-  let idx = cells.length - 1;
-  while (idx > 0 && !cells[idx].value) idx--;
-  cells[idx].value = "";
-  cells[idx].focus();
-}
-
 function newGame(){
   S.max = +diffSel.value;
   S.len = +lenSel.value;
@@ -747,7 +680,7 @@ function newGame(){
     ? t("digitsSuffix", S.len)
     : (ONLINE_DICT_LANGS.has(S.lang) ? t("wordSuffix", S.len) : t("wordSuffixList", S.len));
   renderInputs();
-  toggleInputs(false); // re-enable the keyboard in case the previous round ended the game
+  toggleInputs(false); // re-enable in case the previous round ended the game
   renderHistory();
   updateLeft();
   setMsg("");
@@ -833,7 +766,7 @@ function renderInputs(){
     inp.maxLength = 1;
     inp.autocomplete = "off";
     inp.spellcheck = false;
-    inp.inputMode = "none"; // use the app's own on-screen keyboard, not the device's
+    if (S.mode === "num"){ inp.inputMode = "numeric"; inp.pattern = "[0-9]"; }
     inp.addEventListener("input", () => {
       const ok = S.mode === "num" ? /^[0-9]$/ : letterRegex();
       inp.value = ok.test(inp.value) ? inp.value.toUpperCase() : "";
@@ -891,12 +824,7 @@ async function isRealWord(lang, word){
   return result;
 }
 
-function toggleInputs(disabled){
-  [...inputsEl.children].forEach(i => i.disabled = disabled);
-  [...$("keyboardKeys").children].forEach(b => b.disabled = disabled);
-  $("kbBackBtn").disabled = disabled;
-  $("kbEnterBtn").disabled = disabled;
-}
+function toggleInputs(disabled){ [...inputsEl.children].forEach(i => i.disabled = disabled); }
 
 /* ---------------- Play ---------------- */
 async function submit(){
@@ -1126,13 +1054,10 @@ function applyLanguage(lang){
   $("footer").innerHTML = `${L.footerHint1}<br>${L.footerWordHint}`;
   $("againBtn").textContent = L.playAgainBtn;
   $("playAgainHint").textContent = L.playAgainHint;
-  $("kbEnterBtn").textContent = L.enterKey;
-  $("kbBackBtn").setAttribute("aria-label", L.backspaceKey);
   $("clearMarksBtn").title = L.clearColors;
   $("clearMarksBtn").setAttribute("aria-label", L.clearColors);
   buildDiffOptions();
   buildLenOptions();
-  buildKeyboard();
 }
 langSel.addEventListener("change", () => { applyLanguage(langSel.value); newGame(); });
 
@@ -1156,7 +1081,6 @@ $("modeSeg").addEventListener("click", e => {
   b.classList.add("on");
   S.mode = b.dataset.mode;
   buildLenOptions();
-  buildKeyboard();
   newGame();
 });
 lenSel.addEventListener("change", newGame);
@@ -1165,8 +1089,6 @@ $("newBtn").addEventListener("click", () => { newGame(); setMenu(false); });
 $("giveBtn").addEventListener("click", () => { if (!S.over) finish(false); });
 $("againBtn").addEventListener("click", newGame);
 $("clearMarksBtn").addEventListener("click", clearMarks);
-$("kbBackBtn").addEventListener("click", pressBackspace);
-$("kbEnterBtn").addEventListener("click", () => { if (!S.checking) S.over ? newGame() : submit(); });
 $("overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeOverlay(); });
 document.addEventListener("keydown", e => {
   if (e.key === "Enter"){ e.preventDefault(); if (!S.checking) S.over ? newGame() : submit(); return; }
