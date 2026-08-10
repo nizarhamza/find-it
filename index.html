@@ -626,7 +626,8 @@ function t(key, ...args){
 
 /* ---------------- State ---------------- */
 const S = { mode:"num", len:4, max:10, secret:"", guesses:[], over:false,
-            wins:0, played:0, streak:0, best:null, checking:false, gen:0, lang:"en" };
+            wins:0, played:0, streak:0, best:null, checking:false, gen:0, lang:"en",
+            charMarks: new Map() }; // char -> "mark-g"|"mark-a"|"mark-r", shared by every box showing that char
 
 const $ = id => document.getElementById(id);
 const inputsEl = $("inputs"), histEl = $("history"), msgEl = $("msg"),
@@ -673,6 +674,7 @@ function newGame(){
   S.guesses = [];
   S.over = false;
   S.checking = false;
+  S.charMarks.clear(); // fresh round, fresh deductions
   bannerEl.className = "banner hide";
   bannerEl.textContent = "";
   closeOverlay();
@@ -721,20 +723,35 @@ function letterStripRegex(){
   return S.lang === "ar" ? /[^ء-ي]/g : S.lang === "fr" ? /[^a-zàâäéèêëïîôöùûüÿçœæ]/gi : /[^a-zA-Z]/g;
 }
 
-// clicking a box (live input or a past guess in history) cycles it through 3 manual colour
-// marks (green → amber → red → …) — a scratchpad for the player's own reasoning, separate
-// from the automatic feedback score shown per row
+// Clicking any box — a live input cell or a chip in history — cycles that CHARACTER
+// (not just that one box) through 3 manual colour marks: green → amber → red → …
+// Every box anywhere on the board showing the same letter/digit updates together, so
+// marking one "O" green marks every other "O" green too — a scratchpad for the
+// player's own reasoning, separate from the automatic feedback score shown per row.
 const MARK_CLASSES = ["mark-g", "mark-a", "mark-r"];
 function nextMark(current){ return MARK_CLASSES[(MARK_CLASSES.indexOf(current) + 1) % MARK_CLASSES.length]; }
-function cycleMark(cell){
-  const cur = MARK_CLASSES.find(c => cell.classList.contains(c)) || "";
-  cell.classList.remove(...MARK_CLASSES);
-  cell.classList.add(nextMark(cur));
+
+function applyCharMarkToBox(box, ch){
+  box.classList.remove(...MARK_CLASSES);
+  const mark = S.charMarks.get(ch);
+  if (mark) box.classList.add(mark);
+}
+// re-syncs every box's colour from S.charMarks — call after anything that could have
+// changed either the marks themselves or which boxes/characters are on screen
+function refreshAllMarks(){
+  [...inputsEl.children].forEach(cell => {
+    if (cell.value) applyCharMarkToBox(cell, cell.value.toLowerCase());
+    else cell.classList.remove(...MARK_CLASSES);
+  });
+  histEl.querySelectorAll(".chip[data-ch]").forEach(chip => applyCharMarkToBox(chip, chip.dataset.ch));
+}
+function cycleCharMark(ch){
+  S.charMarks.set(ch, nextMark(S.charMarks.get(ch) || ""));
+  refreshAllMarks();
 }
 function clearMarks(){
-  [...inputsEl.children].forEach(c => c.classList.remove(...MARK_CLASSES));
-  S.guesses.forEach(g => g.marks.fill(""));
-  histEl.querySelectorAll(".chip").forEach(c => c.classList.remove(...MARK_CLASSES));
+  S.charMarks.clear();
+  refreshAllMarks();
 }
 // one delegated listener handles every past guess's chips + row-clear button, since
 // history is re-rendered wholesale on every guess
@@ -743,18 +760,13 @@ histEl.addEventListener("click", e => {
   if (rowClear){
     const g = S.guesses[+rowClear.dataset.clearGi];
     if (!g) return;
-    g.marks.fill("");
-    rowClear.closest(".guess").querySelectorAll(".chip").forEach(c => c.classList.remove(...MARK_CLASSES));
+    for (const ch of new Set(g.guess)) S.charMarks.delete(ch);
+    refreshAllMarks();
     return;
   }
-  const chip = e.target.closest(".chip[data-gi]");
+  const chip = e.target.closest(".chip[data-ch]");
   if (!chip) return;
-  const g = S.guesses[+chip.dataset.gi];
-  if (!g) return;
-  const ci = +chip.dataset.ci;
-  g.marks[ci] = nextMark(g.marks[ci] || "");
-  chip.classList.remove(...MARK_CLASSES);
-  chip.classList.add(g.marks[ci]);
+  cycleCharMark(chip.dataset.ch);
 });
 
 function renderInputs(){
@@ -770,11 +782,16 @@ function renderInputs(){
     inp.addEventListener("input", () => {
       const ok = S.mode === "num" ? /^[0-9]$/ : letterRegex();
       inp.value = ok.test(inp.value) ? inp.value.toUpperCase() : "";
+      if (inp.value) applyCharMarkToBox(inp, inp.value.toLowerCase()); else inp.classList.remove(...MARK_CLASSES);
       if (inp.value && i < S.len - 1) inputsEl.children[i+1].focus();
       setMsg("");
     });
     inp.addEventListener("keydown", e => {
-      if (e.key === "Backspace" && !inp.value && i > 0){ e.preventDefault(); const p = inputsEl.children[i-1]; p.focus(); p.value = ""; }
+      if (e.key === "Backspace" && !inp.value && i > 0){
+        e.preventDefault();
+        const p = inputsEl.children[i-1];
+        p.focus(); p.value = ""; p.classList.remove(...MARK_CLASSES);
+      }
       else if (e.key === "ArrowLeft" && i > 0) inputsEl.children[i-1].focus();
       else if (e.key === "ArrowRight" && i < S.len - 1) inputsEl.children[i+1].focus();
     });
@@ -782,11 +799,15 @@ function renderInputs(){
       e.preventDefault();
       const raw = (e.clipboardData.getData("text") || "").trim();
       const clean = (S.mode === "num" ? raw.replace(/\D/g,"") : raw.replace(letterStripRegex(),"")).toUpperCase();
-      for (let k = 0; k + i < S.len && k < clean.length; k++) inputsEl.children[i+k].value = clean[k];
+      for (let k = 0; k + i < S.len && k < clean.length; k++){
+        const cell = inputsEl.children[i+k];
+        cell.value = clean[k];
+        applyCharMarkToBox(cell, clean[k].toLowerCase());
+      }
       inputsEl.children[Math.min(S.len - 1, i + clean.length)].focus();
     });
     inp.addEventListener("focus", () => inp.select());
-    inp.addEventListener("click", () => cycleMark(inp));
+    inp.addEventListener("click", () => { if (inp.value) cycleCharMark(inp.value.toLowerCase()); });
     inputsEl.appendChild(inp);
   }
   inputsEl.children[0].focus();
@@ -855,7 +876,7 @@ async function submit(){
   }
 
   const r = score(S.secret, g);
-  S.guesses.push({ guess: g, ...r, marks: Array.from({ length: g.length }, () => "") });
+  S.guesses.push({ guess: g, ...r });
   renderHistory();
   updateLeft();
   clearInputs();
@@ -997,8 +1018,7 @@ function renderHistory(){
   histEl.innerHTML = S.guesses.map((g, gi) => `
     <div class="guess">
       <div class="no">${gi+1}</div>
-      <div class="chars">${[...g.guess].map((c, ci) =>
-        `<div class="chip ${g.marks[ci] || ""}" data-gi="${gi}" data-ci="${ci}">${c}</div>`).join("")}</div>
+      <div class="chars">${[...g.guess].map(c => `<div class="chip" data-ch="${c}">${c}</div>`).join("")}</div>
       <div class="scores">
         <div class="score g" title="${t("legendExact")}"><i class="dot g"></i>${g.exact}</div>
         <div class="score a" title="${t("legendPartial")}"><i class="dot a"></i>${g.partial}</div>
@@ -1007,6 +1027,7 @@ function renderHistory(){
       <button class="row-clear" data-clear-gi="${gi}" type="button" title="${t("clearColors")}" aria-label="${t("clearColors")}">🗑</button>
     </div>`).join("");
   histEl.scrollTop = histEl.scrollHeight;
+  refreshAllMarks();
 }
 
 /* ---------------- Theme ---------------- */
