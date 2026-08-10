@@ -92,15 +92,24 @@
   }
   .sub{color:var(--muted);font-size:14px;margin-top:6px}
 
-  .theme-btn{
-    position:absolute;top:2px;right:0;
+  .theme-btn,.menu-btn{
+    position:absolute;top:2px;
     width:42px;height:42px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;
     background:var(--raise);border:1px solid var(--line);color:var(--muted);
     font-size:19px;cursor:pointer;transition:.2s;overflow:hidden;
   }
+  .theme-btn{right:0}
+  .menu-btn{left:0;font-size:17px}
   .theme-btn:hover{color:var(--accent);border-color:var(--accent);transform:rotate(18deg)}
-  .theme-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
+  .menu-btn:hover,.menu-btn.on{color:var(--accent);border-color:var(--accent)}
+  .theme-btn:focus-visible,.menu-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
+
+  /* ---- collapsible settings panel ---- */
+  .collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.2,.8,.2,1)}
+  .collapse.open{grid-template-rows:1fr}
+  .collapse-inner{overflow:hidden;min-height:0}
+  @media (prefers-reduced-motion:reduce){ .collapse{transition:none} }
 
   .card{
     background:linear-gradient(180deg,var(--panel),var(--panel-2));
@@ -300,29 +309,34 @@
 <div class="app">
 
   <header>
+    <button class="menu-btn" id="menuBtn" title="Game menu" aria-label="Toggle mode &amp; settings menu" aria-expanded="false" aria-controls="settingsPanel">☰</button>
     <h1>Find It</h1>
     <div class="sub">Crack the hidden code — numbers or words.</div>
     <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">☾</button>
   </header>
 
-  <div class="card">
-    <div class="row">
-      <label class="lbl">Mode</label>
-      <div class="seg" id="modeSeg">
-        <button data-mode="num" class="on">Numbers</button>
-        <button data-mode="word">Words</button>
+  <div class="collapse" id="settingsPanel">
+    <div class="collapse-inner">
+      <div class="card">
+        <div class="row">
+          <label class="lbl">Mode</label>
+          <div class="seg" id="modeSeg">
+            <button data-mode="num" class="on">Numbers</button>
+            <button data-mode="word">Words</button>
+          </div>
+        </div>
+        <div class="row settings-row">
+          <label class="lbl">Settings</label>
+          <select id="lenSel" title="Word length"></select>
+          <select id="diffSel" title="Difficulty">
+            <option value="15">Easy — 15 tries</option>
+            <option value="10" selected>Normal — 10 tries</option>
+            <option value="7">Hard — 7 tries</option>
+          </select>
+          <button class="btn primary" id="newBtn">New game</button>
+          <button class="btn" id="giveBtn">Give up</button>
+        </div>
       </div>
-    </div>
-    <div class="row settings-row">
-      <label class="lbl">Settings</label>
-      <select id="lenSel" title="Word length"></select>
-      <select id="diffSel" title="Difficulty">
-        <option value="15">Easy — 15 tries</option>
-        <option value="10" selected>Normal — 10 tries</option>
-        <option value="7">Hard — 7 tries</option>
-      </select>
-      <button class="btn primary" id="newBtn">New game</button>
-      <button class="btn" id="giveBtn">Give up</button>
     </div>
   </div>
 
@@ -701,6 +715,15 @@ if (window.matchMedia){
   mq.addEventListener ? mq.addEventListener("change", onChange) : mq.addListener(onChange);
 }
 
+/* ---------------- Menu ---------------- */
+const menuBtn = $("menuBtn"), settingsPanel = $("settingsPanel");
+function setMenu(open){
+  settingsPanel.classList.toggle("open", open);
+  menuBtn.classList.toggle("on", open);
+  menuBtn.setAttribute("aria-expanded", String(open));
+}
+menuBtn.addEventListener("click", () => setMenu(!settingsPanel.classList.contains("open")));
+
 /* ---------------- Wiring ---------------- */
 $("themeBtn").addEventListener("click", () => {
   themeLocked = true;
@@ -716,7 +739,7 @@ $("modeSeg").addEventListener("click", e => {
 });
 lenSel.addEventListener("change", newGame);
 diffSel.addEventListener("change", newGame);
-$("newBtn").addEventListener("click", newGame);
+$("newBtn").addEventListener("click", () => { newGame(); setMenu(false); });
 $("giveBtn").addEventListener("click", () => { if (!S.over) finish(false); });
 $("againBtn").addEventListener("click", newGame);
 $("overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeOverlay(); });
