@@ -220,7 +220,14 @@
     width:34px;height:36px;display:flex;align-items:center;justify-content:center;
     background:var(--sunk);border:1px solid var(--line);border-radius:8px;
     font-weight:700;font-size:17px;text-transform:uppercase;
+    transition:background-color .15s,border-color .15s,color .15s;
   }
+  /* past guesses can be colour-marked too, same as the live input boxes */
+  .guess .chars .chip{cursor:pointer}
+  .guess .chars .chip:hover{border-color:var(--accent)}
+  .chip.mark-g{background:var(--green-b);border-color:var(--green);color:var(--green)}
+  .chip.mark-a{background:var(--amber-b);border-color:var(--amber);color:var(--amber)}
+  .chip.mark-r{background:var(--red-b);border-color:var(--red);color:var(--red)}
   .scores{display:flex;gap:6px;flex:none}
   .score{
     display:flex;align-items:center;gap:5px;min-width:44px;justify-content:center;
@@ -768,15 +775,32 @@ function letterStripRegex(){
   return S.lang === "ar" ? /[^ء-ي]/g : S.lang === "fr" ? /[^a-zàâäéèêëïîôöùûüÿçœæ]/gi : /[^a-zA-Z]/g;
 }
 
-// clicking a box cycles it through 3 manual colour marks (green → amber → red → …),
-// a scratchpad for the player's own reasoning — separate from the automatic feedback in history
+// clicking a box (live input or a past guess in history) cycles it through 3 manual colour
+// marks (green → amber → red → …) — a scratchpad for the player's own reasoning, separate
+// from the automatic feedback score shown per row
 const MARK_CLASSES = ["mark-g", "mark-a", "mark-r"];
+function nextMark(current){ return MARK_CLASSES[(MARK_CLASSES.indexOf(current) + 1) % MARK_CLASSES.length]; }
 function cycleMark(cell){
-  const cur = MARK_CLASSES.findIndex(c => cell.classList.contains(c));
-  MARK_CLASSES.forEach(c => cell.classList.remove(c));
-  cell.classList.add(MARK_CLASSES[(cur + 1) % MARK_CLASSES.length]);
+  const cur = MARK_CLASSES.find(c => cell.classList.contains(c)) || "";
+  cell.classList.remove(...MARK_CLASSES);
+  cell.classList.add(nextMark(cur));
 }
-function clearMarks(){ [...inputsEl.children].forEach(c => c.classList.remove(...MARK_CLASSES)); }
+function clearMarks(){
+  [...inputsEl.children].forEach(c => c.classList.remove(...MARK_CLASSES));
+  S.guesses.forEach(g => g.marks.fill(""));
+  histEl.querySelectorAll(".chip").forEach(c => c.classList.remove(...MARK_CLASSES));
+}
+// one delegated listener handles every past guess's chips, since history is re-rendered wholesale
+histEl.addEventListener("click", e => {
+  const chip = e.target.closest(".chip[data-gi]");
+  if (!chip) return;
+  const g = S.guesses[+chip.dataset.gi];
+  if (!g) return;
+  const ci = +chip.dataset.ci;
+  g.marks[ci] = nextMark(g.marks[ci] || "");
+  chip.classList.remove(...MARK_CLASSES);
+  chip.classList.add(g.marks[ci]);
+});
 
 function renderInputs(){
   sizeCells();
@@ -881,7 +905,7 @@ async function submit(){
   }
 
   const r = score(S.secret, g);
-  S.guesses.push({ guess: g, ...r });
+  S.guesses.push({ guess: g, ...r, marks: Array.from({ length: g.length }, () => "") });
   renderHistory();
   updateLeft();
   clearInputs();
@@ -1020,10 +1044,11 @@ const confetti = (() => {
 
 function renderHistory(){
   if (!S.guesses.length){ histEl.innerHTML = `<div class="empty">${t("emptyHistory")}</div>`; return; }
-  histEl.innerHTML = S.guesses.map((g, i) => `
+  histEl.innerHTML = S.guesses.map((g, gi) => `
     <div class="guess">
-      <div class="no">${i+1}</div>
-      <div class="chars">${[...g.guess].map(c => `<div class="chip">${c}</div>`).join("")}</div>
+      <div class="no">${gi+1}</div>
+      <div class="chars">${[...g.guess].map((c, ci) =>
+        `<div class="chip ${g.marks[ci] || ""}" data-gi="${gi}" data-ci="${ci}">${c}</div>`).join("")}</div>
       <div class="scores">
         <div class="score g" title="${t("legendExact")}"><i class="dot g"></i>${g.exact}</div>
         <div class="score a" title="${t("legendPartial")}"><i class="dot a"></i>${g.partial}</div>
