@@ -39,6 +39,11 @@
     --modal-2:#141a25;
     --shadow:0 30px 80px rgba(0,0,0,.6);
     --radius:14px;
+    /* solid, always-vivid colours for manual marks — deliberately the same in both themes
+       (unlike --green/--amber/--red, which are tuned for text contrast, not solid fills) */
+    --mark-g-bg:#22c55e; --mark-g-line:#16a34a; --mark-g-text:#ffffff;
+    --mark-a-bg:#f5b301; --mark-a-line:#c98e00; --mark-a-text:#3a2a00;
+    --mark-r-bg:#ef4444; --mark-r-line:#dc2626; --mark-r-text:#ffffff;
   }
   /* ============ LIGHT THEME ============ */
   [data-theme="light"]{
@@ -165,9 +170,9 @@
   .cell:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--focus)}
   .cell:disabled{opacity:.5;cursor:not-allowed}
   /* manual colour marks — clicking a cell cycles through these to help reason through clues */
-  .cell.mark-g{background:var(--green-b);border-color:var(--green);color:var(--green)}
-  .cell.mark-a{background:var(--amber-b);border-color:var(--amber);color:var(--amber)}
-  .cell.mark-r{background:var(--red-b);border-color:var(--red);color:var(--red)}
+  .cell.mark-g{background:var(--mark-g-bg);border-color:var(--mark-g-line);color:var(--mark-g-text)}
+  .cell.mark-a{background:var(--mark-a-bg);border-color:var(--mark-a-line);color:var(--mark-a-text)}
+  .cell.mark-r{background:var(--mark-r-bg);border-color:var(--mark-r-line);color:var(--mark-r-text)}
 
   .clear-btn{
     flex:none;width:40px;height:40px;border-radius:10px;
@@ -216,6 +221,13 @@
   @keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
   .guess .no{color:var(--muted);font-size:12px;width:22px;text-align:center;flex:none}
   .guess .chars{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+  .row-clear{
+    flex:none;width:26px;height:26px;border-radius:7px;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;border:1px solid transparent;color:var(--muted);
+    font-size:12px;cursor:pointer;transition:.15s;
+  }
+  .row-clear:hover{color:var(--red);border-color:var(--red-b);background:var(--sunk)}
   .chip{
     width:34px;height:36px;display:flex;align-items:center;justify-content:center;
     background:var(--sunk);border:1px solid var(--line);border-radius:8px;
@@ -225,9 +237,9 @@
   /* past guesses can be colour-marked too, same as the live input boxes */
   .guess .chars .chip{cursor:pointer}
   .guess .chars .chip:hover{border-color:var(--accent)}
-  .chip.mark-g{background:var(--green-b);border-color:var(--green);color:var(--green)}
-  .chip.mark-a{background:var(--amber-b);border-color:var(--amber);color:var(--amber)}
-  .chip.mark-r{background:var(--red-b);border-color:var(--red);color:var(--red)}
+  .chip.mark-g{background:var(--mark-g-bg);border-color:var(--mark-g-line);color:var(--mark-g-text)}
+  .chip.mark-a{background:var(--mark-a-bg);border-color:var(--mark-a-line);color:var(--mark-a-text)}
+  .chip.mark-r{background:var(--mark-r-bg);border-color:var(--mark-r-line);color:var(--mark-r-text)}
   .scores{display:flex;gap:6px;flex:none}
   .score{
     display:flex;align-items:center;gap:5px;min-width:44px;justify-content:center;
@@ -334,6 +346,7 @@
     .chip{width:30px;height:33px;font-size:15px;border-radius:7px}
     .scores{gap:5px}
     .score{min-width:38px;padding:5px 7px;font-size:13px}
+    .row-clear{width:22px;height:22px;font-size:11px}
 
     .overlay{padding:14px}
     .modal{padding:26px 18px}
@@ -790,8 +803,17 @@ function clearMarks(){
   S.guesses.forEach(g => g.marks.fill(""));
   histEl.querySelectorAll(".chip").forEach(c => c.classList.remove(...MARK_CLASSES));
 }
-// one delegated listener handles every past guess's chips, since history is re-rendered wholesale
+// one delegated listener handles every past guess's chips + row-clear button, since
+// history is re-rendered wholesale on every guess
 histEl.addEventListener("click", e => {
+  const rowClear = e.target.closest(".row-clear");
+  if (rowClear){
+    const g = S.guesses[+rowClear.dataset.clearGi];
+    if (!g) return;
+    g.marks.fill("");
+    rowClear.closest(".guess").querySelectorAll(".chip").forEach(c => c.classList.remove(...MARK_CLASSES));
+    return;
+  }
   const chip = e.target.closest(".chip[data-gi]");
   if (!chip) return;
   const g = S.guesses[+chip.dataset.gi];
@@ -1054,6 +1076,7 @@ function renderHistory(){
         <div class="score a" title="${t("legendPartial")}"><i class="dot a"></i>${g.partial}</div>
         <div class="score r" title="${t("legendWrong")}"><i class="dot r"></i>${g.wrong}</div>
       </div>
+      <button class="row-clear" data-clear-gi="${gi}" type="button" title="${t("clearColors")}" aria-label="${t("clearColors")}">🗑</button>
     </div>`).join("");
   histEl.scrollTop = histEl.scrollHeight;
 }
