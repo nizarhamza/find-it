@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find It — Numbers &amp; Words</title>
+<meta name="description" content="Find It — a Mastermind-style code breaking game. Crack a hidden number or word from colour-coded clues.">
+<meta name="theme-color" content="#0e1117" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f6fc" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Find It — Numbers &amp; Words">
+<meta property="og:description" content="Crack the hidden code. Numbers or words, three difficulty levels.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e1117'/%3E%3Ccircle cx='18' cy='32' r='7' fill='%2339d98a'/%3E%3Ccircle cx='36' cy='32' r='7' fill='%23ffc247'/%3E%3Ccircle cx='51' cy='32' r='5' fill='%23ff6b6b'/%3E%3C/svg%3E">
+<style>
+  /* ============ DARK THEME (default) ============ */
+  :root, [data-theme="dark"]{
+    --bg:#0e1117;
+    --glow-1:#1b2740;
+    --glow-2:#21203c;
+    --panel:#161b25;
+    --panel-2:#1d2431;
+    --raise:#121722;      /* buttons, pills, rows */
+    --sunk:#0f141d;       /* input cells, chips */
+    --line:#2a3341;
+    --text:#e7ecf3;
+    --muted:#8b97a8;
+    --green:#39d98a;
+    --amber:#ffc247;
+    --red:#ff6b6b;
+    --accent:#6ea8ff;
+    --violet:#b58cff;
+    --on-accent:#0b1220;
+    --green-b:rgba(57,217,138,.35);
+    --amber-b:rgba(255,194,71,.35);
+    --red-b:rgba(255,107,107,.32);
+    --focus:rgba(110,168,255,.18);
+    --scrim:rgba(6,9,14,.72);
+    --modal-1:#1b2230;
+    --modal-2:#141a25;
+    --shadow:0 30px 80px rgba(0,0,0,.6);
+    --radius:14px;
+  }
+  /* ============ LIGHT THEME ============ */
+  [data-theme="light"]{
+    --bg:#f3f6fc;
+    --glow-1:#d9e5ff;
+    --glow-2:#eadffb;
+    --panel:#ffffff;
+    --panel-2:#f7f9fe;
+    --raise:#f1f5fb;
+    --sunk:#ffffff;
+    --line:#dce3f0;
+    --text:#18212f;
+    --muted:#5a6678;
+    --green:#0a7d45;
+    --amber:#9a6100;
+    --red:#c22133;
+    --accent:#1f5fd6;
+    --violet:#6b3ec9;
+    --on-accent:#ffffff;
+    --green-b:rgba(10,125,69,.4);
+    --amber-b:rgba(154,97,0,.4);
+    --red-b:rgba(194,33,51,.35);
+    --focus:rgba(31,95,214,.2);
+    --scrim:rgba(28,40,60,.42);
+    --modal-1:#ffffff;
+    --modal-2:#f5f8fe;
+    --shadow:0 30px 70px rgba(30,45,80,.22);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(900px 500px at 15% -10%, var(--glow-1) 0%, transparent 60%),
+      radial-gradient(800px 500px at 110% 10%, var(--glow-2) 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    display:flex;justify-content:center;
+    padding:24px 16px 60px;
+    transition:background-color .25s ease,color .25s ease;
+  }
+  .app{width:100%;max-width:640px}
+
+  header{text-align:center;margin-bottom:22px;position:relative}
+  h1{
+    margin:0;font-size:34px;letter-spacing:-.5px;
+    background:linear-gradient(90deg,var(--accent),var(--violet) 60%,var(--green));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .sub{color:var(--muted);font-size:14px;margin-top:6px}
+
+  .theme-btn{
+    position:absolute;top:2px;right:0;
+    width:42px;height:42px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--raise);border:1px solid var(--line);color:var(--muted);
+    font-size:19px;cursor:pointer;transition:.2s;overflow:hidden;
+  }
+  .theme-btn:hover{color:var(--accent);border-color:var(--accent);transform:rotate(18deg)}
+  .theme-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
+
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:16px;
+  }
+
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .row + .row{margin-top:12px}
+  label.lbl{font-size:12px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);width:100%}
+
+  .seg{display:flex;background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px;flex:1;min-width:200px}
+  .seg button{
+    flex:1;border:0;background:transparent;color:var(--muted);
+    padding:9px 10px;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;
+    transition:.15s;
+  }
+  .seg button:hover{color:var(--text)}
+  .seg button.on{background:var(--accent);color:var(--on-accent)}
+
+  select{
+    background:var(--raise);color:var(--text);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;font-size:14px;cursor:pointer;
+  }
+
+  .btn{
+    border:1px solid var(--line);background:var(--raise);color:var(--text);
+    padding:10px 16px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;transition:.15s;
+  }
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent}
+  .btn.primary:hover{filter:brightness(1.1);color:var(--on-accent)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  .status{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px}
+  .status .pill{background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:var(--muted)}
+  .status .pill b{color:var(--text)}
+
+  .inputs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:4px 0 14px}
+  .cell{
+    width:52px;height:60px;text-align:center;
+    font-size:26px;font-weight:700;text-transform:uppercase;
+    background:var(--sunk);color:var(--text);
+    border:2px solid var(--line);border-radius:12px;
+    caret-color:var(--accent);transition:.15s;
+  }
+  .cell:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--focus)}
+  .cell:disabled{opacity:.5}
+
+  .msg{min-height:20px;text-align:center;font-size:13.5px;color:var(--amber)}
+  .msg.err{color:var(--red)}
+  .msg.ok{color:var(--green)}
+
+  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .dot.g{background:var(--green)}.dot.a{background:var(--amber)}.dot.r{background:var(--red)}
+
+  .history{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding-right:4px}
+  .history::-webkit-scrollbar{width:8px}
+  .history::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:18px 0}
+
+  .guess{
+    display:flex;align-items:center;gap:10px;
+    background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:8px 10px;
+    animation:pop .25s ease;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .guess .no{color:var(--muted);font-size:12px;width:22px;text-align:center;flex:none}
+  .guess .chars{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+  .chip{
+    width:34px;height:36px;display:flex;align-items:center;justify-content:center;
+    background:var(--sunk);border:1px solid var(--line);border-radius:8px;
+    font-weight:700;font-size:17px;text-transform:uppercase;
+  }
+  .scores{display:flex;gap:6px;flex:none}
+  .score{
+    display:flex;align-items:center;gap:5px;min-width:44px;justify-content:center;
+    border-radius:8px;padding:6px 8px;font-weight:700;font-size:14px;
+    border:1px solid var(--line);background:var(--sunk);
+  }
+  .score.g{color:var(--green);border-color:var(--green-b)}
+  .score.a{color:var(--amber);border-color:var(--amber-b)}
+  .score.r{color:var(--red);border-color:var(--red-b)}
+
+  .banner{
+    text-align:center;padding:16px;border-radius:12px;margin-bottom:14px;font-size:15px;
+    border:1px solid var(--line);background:var(--raise);
+  }
+  .banner.win{border-color:var(--green-b);color:var(--green)}
+  .banner.lose{border-color:var(--red-b);color:var(--red)}
+  .banner b{font-size:22px;letter-spacing:2px;display:block;margin-top:6px;color:var(--text);text-transform:uppercase}
+
+  /* ---- celebration ---- */
+  #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:60}
+  .overlay{
+    position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:20px;
+    background:var(--scrim);backdrop-filter:blur(6px);
+    animation:fade .3s ease;
+  }
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{
+    width:100%;max-width:420px;text-align:center;padding:32px 26px;border-radius:20px;
+    background:linear-gradient(180deg,var(--modal-1),var(--modal-2));
+    border:1px solid var(--line);
+    box-shadow:var(--shadow);
+    animation:rise .45s cubic-bezier(.2,1.3,.4,1);
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(24px) scale(.94)}to{opacity:1;transform:none}}
+  .modal.win{border-color:var(--green-b)}
+  .modal.lose{border-color:var(--red-b)}
+
+  .trophy{width:74px;height:74px;margin:0 auto 14px;position:relative}
+  .trophy .ring{
+    position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from 0deg,var(--green),var(--accent),var(--violet),var(--amber),var(--green));
+    animation:spin 4s linear infinite;
+  }
+  .modal.lose .trophy .ring{background:conic-gradient(from 0deg,var(--red),var(--panel-2),var(--red));animation-duration:9s}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .trophy .core{
+    position:absolute;inset:5px;border-radius:50%;background:var(--modal-2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:30px;font-weight:800;color:var(--text);
+  }
+  .modal.win .trophy .core{color:var(--green)}
+  .modal.lose .trophy .core{color:var(--red)}
+
+  .modal h2{
+    margin:0 0 6px;font-size:29px;letter-spacing:-.5px;line-height:1.15;
+    background:linear-gradient(90deg,var(--green),var(--accent) 55%,var(--violet));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .modal.lose h2{background:linear-gradient(90deg,var(--red),var(--amber));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .modal p{margin:0 0 18px;color:var(--muted);font-size:14.5px;line-height:1.6}
+  .modal p b{color:var(--text)}
+
+  .reveal{
+    display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 20px;
+  }
+  .reveal .chip{
+    width:44px;height:50px;font-size:22px;border-radius:10px;
+    border-color:var(--green-b);background:var(--sunk);color:var(--green);
+    animation:flip .4s ease backwards;
+  }
+  .modal.lose .reveal .chip{color:var(--red);border-color:var(--red-b)}
+  @keyframes flip{from{opacity:0;transform:rotateX(-90deg) translateY(-8px)}to{opacity:1;transform:none}}
+
+  .stats{display:flex;gap:8px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+  .stat{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:84px}
+  .stat span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+  .stat b{font-size:19px}
+
+  .modal .btn{width:100%;padding:13px}
+  .modal .hint{margin:12px 0 0;font-size:12px;color:var(--muted)}
+
+  .hide{display:none !important}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:10px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>Find It</h1>
+    <div class="sub">Crack the hidden code — numbers or words.</div>
+    <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">☾</button>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <label class="lbl">Mode</label>
+      <div class="seg" id="modeSeg">
+        <button data-mode="num" class="on">Numbers</button>
+        <button data-mode="word">Words</button>
+      </div>
+    </div>
+    <div class="row">
+      <label class="lbl">Settings</label>
+      <select id="lenSel" title="Word length"></select>
+      <select id="diffSel" title="Difficulty">
+        <option value="15">Easy — 15 tries</option>
+        <option value="10" selected>Normal — 10 tries</option>
+        <option value="7">Hard — 7 tries</option>
+      </select>
+      <button class="btn primary" id="newBtn">New game</button>
+      <button class="btn" id="giveBtn">Give up</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="status">
+      <div class="pill">Tries left <b id="left">10</b></div>
+      <div class="pill" id="modePill">4 digits · repeats allowed</div>
+    </div>
+  </div>
+
+  <div class="banner hide" id="banner"></div>
+
+  <div class="card" id="playCard">
+    <div class="inputs" id="inputs"></div>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="card">
+    <div class="legend">
+      <span><i class="dot g"></i> right &amp; in place</span>
+      <span><i class="dot a"></i> right, wrong place</span>
+      <span><i class="dot r"></i> not in the code</span>
+    </div>
+    <div class="history" id="history">
+      <div class="empty">No guesses yet. Start typing above.</div>
+    </div>
+  </div>
+
+  <footer>
+    Type to auto-advance · Backspace to go back · Enter to check<br>
+    Word guesses must be real words from the built-in list.
+  </footer>
+</div>
+
+<canvas id="fx" class="hide"></canvas>
+
+<div class="overlay hide" id="overlay">
+  <div class="modal" id="modal">
+    <div class="trophy"><div class="ring"></div><div class="core" id="tCore">★</div></div>
+    <h2 id="oTitle">Congratulations!</h2>
+    <p id="oText"></p>
+    <div class="reveal" id="oReveal"></div>
+    <div class="stats" id="oStats"></div>
+    <button class="btn primary" id="againBtn">Play again</button>
+    <p class="hint">Press Enter to play again · Esc to review the board</p>
+  </div>
+</div>
+
+<script>
+/* ---------------- Word list (3–8 letters) ---------------- */
+const WORDS = {
+3:["cat","dog","sun","map","key","ice","jam","owl","fox","bat","pen","cup","box","net","web","sky","arm","bed","leg","ear","car","bus","toy","zip","gum","log","fan","rat","hat","pot","tip","win","war","oak","elk","nut","oil","pie","ray","sea","top","vet","yak","zoo","bag","bee","cow","den","egg","fig","gas","hen","ink","jar","kit","lip","mud","nap","paw","rug","ski","tag","urn","van","wax","bow","cab","dam","fun","gap","hut","jet","lab","mix","nod","pig","rib","sap","tan","cut","dry","eye","few","air"],
+4:["bird","tree","lamp","fish","gold","rain","moon","star","wolf","frog","king","milk","road","ship","snow","wind","book","cake","door","fire","game","hand","iron","jump","kite","leaf","mind","note","open","page","quiz","ring","salt","time","unit","vase","wave","yard","zone","bell","corn","dust","echo","farm","gate","hill","idea","jazz","knot","lake","maze","nest","oval","palm","quit","rock","sand","tide","user","void","wall","yarn","zero","bath","clay","desk","east","flag","glow","herb","inch","jail","keen","lion","mask","nine","oven","pond","rope","seed","tent","volt","wing"],
+5:["apple","brave","cloud","dance","eagle","flame","grape","house","input","jelly","knife","lemon","mango","noble","ocean","piano","queen","river","stone","tiger","urban","vivid","water","xenon","yield","zebra","actor","beach","chair","dream","earth","frost","glass","heart","index","joker","koala","light","music","north","olive","pearl","quiet","robot","smile","train","under","valve","wheat","youth","amber","bloom","crane","depth","ember","fable","giant","honey","ivory","joint","kneel","laser","metal","night","onion","plant","quest","rhyme","spark","torch","ultra","vapor","witty","yacht","angle","blaze","curve","donut","fresh","globe","hotel","input"],
+6:["animal","branch","candle","desert","engine","flower","garden","hammer","island","jacket","kettle","ladder","magnet","nature","orange","pencil","quiver","rocket","silver","turtle","umpire","valley","window","yellow","zigzag","artist","bridge","circle","dragon","empire","forest","gravel","harbor","insect","jungle","knight","lizard","market","napkin","office","planet","quartz","ribbon","summer","tunnel","unique","velvet","walnut","anchor","basket","copper","dinner","effort","fabric","guitar","helmet","injury","junior","kidney","puzzle","mirror","nickel","oxygen","parrot","quaint","rescue","saddle","temple","unfold","vacuum","winter","yogurt","bamboo","cactus","damage","escape","fossil","gopher","hunter","indigo"],
+7:["balloon","captain","diamond","evening","factory","gateway","harvest","imagine","journey","kitchen","library","monster","network","october","package","quality","rainbow","scatter","teacher","uniform","village","weather","younger","zealous","academy","bicycle","cabinet","dolphin","eclipse","freedom","gallery","holiday","insider","justice","keeping","lantern","machine","natural","organic","painter","quarter","respect","silence","tornado","upgrade","volcano","warrior","yielded","amazing","blanket","comfort","default","element","fantasy","granite","husband","iceberg","jasmine","kingdom","liberty","mystery","noodles","october","pyramid","quicken","routine","stadium","triumph","unicorn","venture","whisper"],
+8:["airplane","birthday","computer","dinosaur","elephant","festival","greeting","hospital","interior","junction","keyboard","language","mountain","notebook","observer","painting","question","reminder","sandwich","triangle","umbrella","vacation","watchdog","yearbook","absolute","backpack","campaign","daylight","envelope","flamingo","gorgeous","handbook","identity","jealousy","kindness","lavender","magnetic","nautical","obstacle","parallel","quantity","resource","strength","together","universe","vertical","wildlife","yielding","argument","blizzard","chemical","diagonal","exercise","farewell","gasoline","headline","increase","juvenile","knuckles","lifetime","material","negative","official","platform","quotient","received","seasonal","tropical"]
+};
+// sanitize: keep only words of the exact length, unique, lowercase
+for (const k of Object.keys(WORDS)) {
+  const n = +k;
+  WORDS[k] = [...new Set(WORDS[k].map(w => w.toLowerCase()))].filter(w => w.length === n && /^[a-z]+$/.test(w));
+}
+const WORD_SETS = Object.fromEntries(Object.entries(WORDS).map(([k,v]) => [k, new Set(v)]));
+
+/* ---------------- Core scoring (Mastermind rules) ---------------- */
+function score(secret, guess){
+  const n = secret.length;
+  let exact = 0;
+  const sc = Object.create(null), gc = Object.create(null);
+  for (let i = 0; i < n; i++){
+    if (secret[i] === guess[i]) { exact++; continue; }
+    sc[secret[i]] = (sc[secret[i]] || 0) + 1;
+    gc[guess[i]]  = (gc[guess[i]]  || 0) + 1;
+  }
+  let partial = 0;
+  for (const ch in gc) if (sc[ch]) partial += Math.min(sc[ch], gc[ch]);
+  return { exact, partial, wrong: n - exact - partial };
+}
+if (typeof module !== "undefined") module.exports = { score, WORDS };
+
+/* ---------------- State ---------------- */
+const S = { mode:"num", len:4, max:10, secret:"", guesses:[], over:false,
+            wins:0, played:0, streak:0, best:null };
+
+const $ = id => document.getElementById(id);
+const inputsEl = $("inputs"), histEl = $("history"), msgEl = $("msg"),
+      bannerEl = $("banner"), leftEl = $("left"), modePill = $("modePill"),
+      lenSel = $("lenSel"), diffSel = $("diffSel");
+
+function buildLenOptions(){
+  const opts = S.mode === "num"
+    ? [3,4,5,6].map(n => [n, n + " digits"])
+    : Object.keys(WORDS).map(Number).sort((a,b)=>a-b).map(n => [n, n + " letters"]);
+  lenSel.innerHTML = opts.map(([v,t]) => `<option value="${v}">${t}</option>`).join("");
+  const want = opts.some(o => o[0] === S.len) ? S.len : (S.mode === "num" ? 4 : 5);
+  S.len = want; lenSel.value = String(want);
+}
+
+function randomSecret(){
+  if (S.mode === "num"){
+    let s = "";
+    for (let i = 0; i < S.len; i++) s += Math.floor(Math.random() * 10);
+    return s;
+  }
+  const list = WORDS[S.len];
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function newGame(){
+  S.max = +diffSel.value;
+  S.len = +lenSel.value;
+  S.secret = randomSecret();
+  S.guesses = [];
+  S.over = false;
+  bannerEl.className = "banner hide";
+  bannerEl.textContent = "";
+  closeOverlay();
+  modePill.textContent = S.mode === "num"
+    ? `${S.len} digits · repeats allowed`
+    : `${S.len}-letter word · ${WORDS[S.len].length} in list`;
+  renderInputs();
+  renderHistory();
+  updateLeft();
+  setMsg("");
+}
+
+function updateLeft(){ leftEl.textContent = Math.max(0, S.max - S.guesses.length); }
+function setMsg(t, cls=""){ msgEl.textContent = t; msgEl.className = "msg " + cls; }
+
+/* ---------------- Input boxes ---------------- */
+function renderInputs(){
+  inputsEl.innerHTML = "";
+  for (let i = 0; i < S.len; i++){
+    const inp = document.createElement("input");
+    inp.className = "cell";
+    inp.maxLength = 1;
+    inp.autocomplete = "off";
+    inp.spellcheck = false;
+    if (S.mode === "num"){ inp.inputMode = "numeric"; inp.pattern = "[0-9]"; }
+    inp.addEventListener("input", () => {
+      const ok = S.mode === "num" ? /^[0-9]$/ : /^[a-zA-Z]$/;
+      inp.value = ok.test(inp.value) ? inp.value.toUpperCase() : "";
+      if (inp.value && i < S.len - 1) inputsEl.children[i+1].focus();
+      setMsg("");
+    });
+    inp.addEventListener("keydown", e => {
+      if (e.key === "Backspace" && !inp.value && i > 0){ e.preventDefault(); const p = inputsEl.children[i-1]; p.focus(); p.value = ""; }
+      else if (e.key === "ArrowLeft" && i > 0) inputsEl.children[i-1].focus();
+      else if (e.key === "ArrowRight" && i < S.len - 1) inputsEl.children[i+1].focus();
+    });
+    inp.addEventListener("paste", e => {
+      e.preventDefault();
+      const raw = (e.clipboardData.getData("text") || "").trim();
+      const clean = (S.mode === "num" ? raw.replace(/\D/g,"") : raw.replace(/[^a-zA-Z]/g,"")).toUpperCase();
+      for (let k = 0; k + i < S.len && k < clean.length; k++) inputsEl.children[i+k].value = clean[k];
+      inputsEl.children[Math.min(S.len - 1, i + clean.length)].focus();
+    });
+    inp.addEventListener("focus", () => inp.select());
+    inputsEl.appendChild(inp);
+  }
+  inputsEl.children[0].focus();
+}
+const readGuess = () => [...inputsEl.children].map(i => i.value).join("").toLowerCase();
+function clearInputs(){ [...inputsEl.children].forEach(i => i.value = ""); inputsEl.children[0].focus(); }
+
+/* ---------------- Play ---------------- */
+function submit(){
+  if (S.over) return;
+  const g = readGuess();
+  if (g.length !== S.len) return setMsg(`Fill all ${S.len} boxes.`, "err");
+  if (S.mode === "word" && !WORD_SETS[S.len].has(g))
+    return setMsg(`"${g.toUpperCase()}" isn't in the word list.`, "err");
+  if (S.guesses.some(x => x.guess === g)) return setMsg("You already tried that one.", "err");
+
+  const r = score(S.secret, g);
+  S.guesses.push({ guess: g, ...r });
+  renderHistory();
+  updateLeft();
+  clearInputs();
+
+  if (r.exact === S.len) return finish(true);
+  if (S.guesses.length >= S.max) return finish(false);
+  setMsg("");
+}
+
+function finish(won){
+  S.over = true;
+  [...inputsEl.children].forEach(i => i.disabled = true);
+  bannerEl.className = "banner " + (won ? "win" : "lose");
+  bannerEl.innerHTML = won
+    ? `Cracked it in ${S.guesses.length} ${S.guesses.length === 1 ? "try" : "tries"}!<b>${S.secret}</b>`
+    : `Out of tries — the code was:<b>${S.secret}</b>`;
+  setMsg("");
+
+  S.played++;
+  if (won){
+    S.wins++; S.streak++;
+    if (S.best === null || S.guesses.length < S.best) S.best = S.guesses.length;
+  } else S.streak = 0;
+
+  showOverlay(won);
+  if (won) confetti.burst();
+}
+
+/* ---------------- Celebration ---------------- */
+const RANKS = [
+  [1, "Unbelievable!", "First try. That was pure magic."],
+  [3, "Outstanding!",  "You read that code like a book."],
+  [5, "Brilliant!",    "Sharp deduction — barely broke a sweat."],
+  [8, "Well played!",  "Solid logic all the way through."],
+  [99,"Congratulations!", "Down to the wire, but you got there."]
+];
+
+function showOverlay(won){
+  const n = S.guesses.length;
+  const modal = $("modal");
+  modal.className = "modal " + (won ? "win" : "lose");
+  $("tCore").textContent = won ? "★" : "✕";
+
+  if (won){
+    const [, title, line] = RANKS.find(r => n <= r[0]);
+    $("oTitle").textContent = title;
+    $("oText").innerHTML = `${line}<br>You found it in <b>${n}</b> ${n === 1 ? "try" : "tries"}.`;
+  } else {
+    $("oTitle").textContent = "So close!";
+    $("oText").innerHTML = `You ran out of tries. The hidden ${S.mode === "num" ? "number" : "word"} was:`;
+  }
+
+  $("oReveal").innerHTML = [...S.secret]
+    .map((c, i) => `<div class="chip" style="animation-delay:${i * 70}ms">${c}</div>`).join("");
+
+  $("oStats").innerHTML = `
+    <div class="stat"><span>Tries</span><b>${n}/${S.max}</b></div>
+    <div class="stat"><span>Streak</span><b>${S.streak}</b></div>
+    <div class="stat"><span>Best</span><b>${S.best ?? "—"}</b></div>
+    <div class="stat"><span>Won</span><b>${S.wins}/${S.played}</b></div>`;
+
+  $("overlay").classList.remove("hide");
+  setTimeout(() => $("againBtn").focus(), 60);
+}
+
+function closeOverlay(){
+  $("overlay").classList.add("hide");
+  confetti.stop();
+}
+
+/* Confetti — pure canvas, no libraries */
+const confetti = (() => {
+  const cv = $("fx");
+  const ctx = cv.getContext ? cv.getContext("2d") : null;
+  if (!ctx) return { burst(){}, stop(){} };   // graceful no-op if canvas is unavailable
+    const themeColors = () => {
+    const cs = getComputedStyle(document.documentElement);
+    const v = n => (cs.getPropertyValue(n) || "").trim();
+    return [v("--green"), v("--accent"), v("--violet"), v("--amber"), v("--red"), v("--text")]
+      .filter(Boolean);
+  };
+  let COLORS = ["#39d98a","#6ea8ff","#b58cff","#ffc247","#ff6b6b","#ffffff"];
+  let parts = [], raf = null;
+
+  function size(){
+    const d = window.devicePixelRatio || 1;
+    cv.width = innerWidth * d; cv.height = innerHeight * d;
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+  }
+  addEventListener("resize", () => { if (raf) size(); });
+
+  function spawn(count, originX){
+    for (let i = 0; i < count; i++){
+      parts.push({
+        x: originX, y: innerHeight * 0.42 + (Math.random() - .5) * 40,
+        vx: (Math.random() - .5) * 13,
+        vy: -6 - Math.random() * 11,
+        w: 6 + Math.random() * 7, h: 9 + Math.random() * 9,
+        rot: Math.random() * Math.PI, vr: (Math.random() - .5) * .3,
+        c: COLORS[(Math.random() * COLORS.length) | 0],
+        life: 1
+      });
+    }
+  }
+
+  function frame(){
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    parts = parts.filter(p => p.life > 0 && p.y < innerHeight + 60);
+    for (const p of parts){
+      p.vy += 0.32; p.vx *= 0.995;
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      if (p.y > innerHeight * 0.75) p.life -= 0.012;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * (0.4 + 0.6 * Math.abs(Math.cos(p.rot))));
+      ctx.restore();
+    }
+    if (parts.length) raf = requestAnimationFrame(frame);
+    else stop();
+  }
+
+  function burst(){
+    size();
+    const tc = themeColors(); if (tc.length) COLORS = tc;
+    cv.classList.remove("hide");
+    spawn(70, innerWidth * 0.25);
+    spawn(70, innerWidth * 0.75);
+    setTimeout(() => spawn(60, innerWidth * 0.5), 220);
+    setTimeout(() => { spawn(45, innerWidth * 0.15); spawn(45, innerWidth * 0.85); }, 520);
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
+
+  function stop(){
+    if (raf) cancelAnimationFrame(raf);
+    raf = null; parts = [];
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    cv.classList.add("hide");
+  }
+
+  return { burst, stop };
+})();
+
+function renderHistory(){
+  if (!S.guesses.length){ histEl.innerHTML = `<div class="empty">No guesses yet. Start typing above.</div>`; return; }
+  histEl.innerHTML = S.guesses.map((g, i) => `
+    <div class="guess">
+      <div class="no">${i+1}</div>
+      <div class="chars">${[...g.guess].map(c => `<div class="chip">${c}</div>`).join("")}</div>
+      <div class="scores">
+        <div class="score g" title="right & in place"><i class="dot g"></i>${g.exact}</div>
+        <div class="score a" title="right, wrong place"><i class="dot a"></i>${g.partial}</div>
+        <div class="score r" title="not in the code"><i class="dot r"></i>${g.wrong}</div>
+      </div>
+    </div>`).reverse().join("");
+}
+
+/* ---------------- Theme ---------------- */
+const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+let theme = prefersLight ? "light" : "dark";
+let themeLocked = false;   // true once the user picks manually — stop following the OS
+
+function applyTheme(t){
+  theme = t;
+  document.documentElement.setAttribute("data-theme", t);
+  const b = $("themeBtn");
+  b.textContent = t === "dark" ? "☾" : "☀";
+  b.title = t === "dark" ? "Switch to light mode" : "Switch to dark mode";
+}
+applyTheme(theme);
+
+if (window.matchMedia){
+  const mq = window.matchMedia("(prefers-color-scheme: light)");
+  const onChange = e => { if (!themeLocked) applyTheme(e.matches ? "light" : "dark"); };
+  mq.addEventListener ? mq.addEventListener("change", onChange) : mq.addListener(onChange);
+}
+
+/* ---------------- Wiring ---------------- */
+$("themeBtn").addEventListener("click", () => {
+  themeLocked = true;
+  applyTheme(theme === "dark" ? "light" : "dark");
+});
+$("modeSeg").addEventListener("click", e => {
+  const b = e.target.closest("button[data-mode]"); if (!b) return;
+  [...e.currentTarget.children].forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  S.mode = b.dataset.mode;
+  buildLenOptions();
+  newGame();
+});
+lenSel.addEventListener("change", newGame);
+diffSel.addEventListener("change", newGame);
+$("newBtn").addEventListener("click", newGame);
+$("giveBtn").addEventListener("click", () => { if (!S.over) finish(false); });
+$("againBtn").addEventListener("click", newGame);
+$("overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeOverlay(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter"){ e.preventDefault(); S.over ? newGame() : submit(); return; }
+  if (e.key === "Escape"){ closeOverlay(); return; }
+
+  // typing anywhere on the page drops the character into the next empty box
+  if (S.over || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+  const valid = S.mode === "num" ? /^[0-9]$/ : /^[a-zA-Z]$/;
+  if (!valid.test(e.key)) return;
+  const cells = [...inputsEl.children];
+  if (cells.includes(document.activeElement)) return;   // already typing in a box
+  e.preventDefault();
+  const cell = cells.find(c => !c.value) || cells[cells.length - 1];
+  cell.value = e.key.toUpperCase();
+  (cells[cells.indexOf(cell) + 1] || cell).focus();
+  setMsg("");
+});
+
+buildLenOptions();
+newGame();
+</script>
+</body>
+</html>
