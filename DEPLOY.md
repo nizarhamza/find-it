@@ -1,63 +1,83 @@
-# Putting Find It online
+# Deploying Find It
 
-The game is one self-contained HTML file — no build step, no server, no dependencies.
-The folder `find-it-site/` is ready to publish as-is (the file is renamed `index.html`
-so it loads at the root of your URL).
+The site is one static file (`index.html`). Nothing to build, nothing to install.
 
 ---
 
-## Option 1 — Netlify Drop (fastest, ~30 seconds)
+## Step 1 — Put the repo on GitHub
 
-1. Go to **https://app.netlify.com/drop**
-2. Drag the whole **`find-it-site`** folder onto the page (the folder, not the file).
-3. It uploads and gives you a live URL like `https://random-name-123.netlify.app`.
-4. Sign in (GitHub/email) when prompted to keep the site permanently — without an
-   account the URL expires after about an hour.
-5. Rename it under **Site configuration → Change site name** to get
-   `https://your-name.netlify.app`.
+This folder is already a git repository with one commit on `main`.
 
-To update later: open the site → **Deploys** tab → drag the folder in again.
-
----
-
-## Option 2 — Cloudflare Pages
-
-1. Go to **https://pages.cloudflare.com** → *Create a project* → *Direct Upload*.
-2. Drag the `find-it-site` folder in.
-3. Free, fast global CDN, and the URL never expires.
-
----
-
-## Option 3 — GitHub Pages (best if you want version history)
+1. Create an **empty** repo at https://github.com/new
+   - Name: `find-it`
+   - **Do not** tick "Add a README" / .gitignore / license — the repo already has them,
+     and an initialised remote will cause a push conflict.
+2. Push from inside this folder:
 
 ```bash
-cd find-it-site
-git init
-git add index.html
-git commit -m "Find It game"
-git branch -M main
 git remote add origin https://github.com/YOUR-USERNAME/find-it.git
 git push -u origin main
 ```
 
-Then in the repo: **Settings → Pages → Source: main branch / root**.
-Live a minute later at `https://YOUR-USERNAME.github.io/find-it/`.
+If git asks for a password, use a **personal access token** (GitHub no longer accepts
+account passwords): https://github.com/settings/tokens → *Generate new token (classic)*
+→ tick `repo` → paste it as the password.
 
 ---
 
-## Option 4 — Vercel
+## Step 2 — Connect it to Cloudflare Pages
 
-1. **https://vercel.com/new** → import the repo, or run `npx vercel` inside `find-it-site`.
-2. Framework preset: **Other**. No build command, output directory `.`.
+1. https://pages.cloudflare.com → **Ship something new** → **Connect GitHub**
+2. Authorise Cloudflare and pick the `find-it` repository.
+3. Build settings:
+
+   | Setting | Value |
+   | --- | --- |
+   | Production branch | `main` |
+   | Framework preset | **None** |
+   | Build command | *(leave empty)* |
+   | Build output directory | `/` |
+
+4. **Save and Deploy.** First build takes under a minute.
+5. Live at `https://find-it.pages.dev` (or `find-it-xyz.pages.dev` if the name is taken).
+
+From then on, every `git push` to `main` triggers an automatic redeploy. Pull requests
+get their own preview URL.
+
+---
+
+## Updating the game
+
+```bash
+# edit index.html, then:
+git add index.html
+git commit -m "Describe the change"
+git push
+```
+
+Cloudflare picks it up within a minute. Roll back any time from the Pages dashboard →
+**Deployments** → pick an older build → *Rollback*.
+
+---
+
+## Skipping git entirely
+
+If you'd rather not use a repo, Cloudflare Pages also accepts a straight upload:
+**Ship something new → Upload your static files**, then drag this folder in. You lose
+automatic redeploys and version history, but it works in about ten seconds.
+
+---
+
+## Custom domain
+
+Pages dashboard → your project → **Custom domains** → *Set up a domain*. If the domain
+is already on Cloudflare, DNS is configured for you; otherwise add the CNAME they show
+you at your registrar. HTTPS certificates are issued automatically.
 
 ---
 
 ## Notes
 
-- Every host above has a free tier that covers a static page like this comfortably.
-- HTTPS is automatic on all of them.
-- The game runs entirely in the browser, so there is nothing to secure, no API keys,
-  and no running costs.
-- Want a custom domain? All four let you point one at the site from their dashboard —
-  you add a CNAME record at your registrar.
-- If you edit `find-it.html`, copy it over `find-it-site/index.html` before redeploying.
+- Free tier covers unlimited requests and 500 builds/month — far beyond what this needs.
+- The game runs entirely in the browser: no API keys, no server, no running costs.
+- `.gitignore` already excludes OS and editor junk.
