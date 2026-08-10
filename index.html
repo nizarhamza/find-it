@@ -692,7 +692,8 @@ function renderHistory(){
         <div class="score a" title="right, wrong place"><i class="dot a"></i>${g.partial}</div>
         <div class="score r" title="not in the code"><i class="dot r"></i>${g.wrong}</div>
       </div>
-    </div>`).reverse().join("");
+    </div>`).join("");
+  histEl.scrollTop = histEl.scrollHeight;
 }
 
 /* ---------------- Theme ---------------- */
