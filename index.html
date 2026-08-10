@@ -157,8 +157,7 @@
   .status .pill{background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:var(--muted)}
   .status .pill b{color:var(--text)}
 
-  .inputs-row{display:flex;align-items:center;gap:8px;margin:4px 0 14px}
-  .inputs{display:flex;gap:var(--cell-gap,8px);justify-content:center;flex-wrap:wrap;flex:1;margin:0}
+  .inputs{display:flex;gap:var(--cell-gap,8px);justify-content:center;flex-wrap:wrap;margin:4px 0 14px}
   .cell{
     width:var(--cell-w,52px);height:var(--cell-h,60px);text-align:center;
     font-size:var(--cell-fs,26px);font-weight:700;text-transform:uppercase;
@@ -173,15 +172,6 @@
   .cell.mark-g{background:var(--mark-g-bg);border-color:var(--mark-g-line);color:var(--mark-g-text)}
   .cell.mark-a{background:var(--mark-a-bg);border-color:var(--mark-a-line);color:var(--mark-a-text)}
   .cell.mark-r{background:var(--mark-r-bg);border-color:var(--mark-r-line);color:var(--mark-r-text)}
-
-  .clear-btn{
-    flex:none;width:40px;height:40px;border-radius:10px;
-    display:flex;align-items:center;justify-content:center;
-    background:var(--raise);border:1px solid var(--line);color:var(--muted);
-    font-size:16px;cursor:pointer;transition:.15s;
-  }
-  .clear-btn:hover{color:var(--red);border-color:var(--red-b)}
-  .clear-btn:active{transform:scale(.93)}
 
   .msg{min-height:20px;text-align:center;font-size:13.5px;color:var(--amber)}
   .msg.err{color:var(--red)}
@@ -339,8 +329,6 @@
     .stat{min-width:68px;padding:7px 10px}
     .stat b{font-size:17px}
     .reveal .chip{width:36px;height:42px;font-size:18px}
-
-    .clear-btn{width:34px;height:34px;font-size:14px}
   }
 </style>
 </head>
@@ -401,10 +389,7 @@
 
     <div class="divider"></div>
 
-    <div class="inputs-row">
-      <div class="inputs" id="inputs"></div>
-      <button class="clear-btn" id="clearMarksBtn" type="button" title="Clear colours" aria-label="Clear colours">🗑</button>
-    </div>
+    <div class="inputs" id="inputs"></div>
     <div class="msg" id="msg"></div>
   </div>
 
@@ -749,10 +734,6 @@ function cycleCharMark(ch){
   S.charMarks.set(ch, nextMark(S.charMarks.get(ch) || ""));
   refreshAllMarks();
 }
-function clearMarks(){
-  S.charMarks.clear();
-  refreshAllMarks();
-}
 // one delegated listener handles every past guess's chips + row-clear button, since
 // history is re-rendered wholesale on every guess
 histEl.addEventListener("click", e => {
@@ -877,6 +858,7 @@ async function submit(){
 
   const r = score(S.secret, g);
   S.guesses.push({ guess: g, ...r });
+  if (r.wrong === g.length) for (const ch of new Set(g)) S.charMarks.set(ch, "mark-r"); // fully wrong guess — every one of these characters is proven absent
   renderHistory();
   updateLeft();
   clearInputs();
@@ -1075,8 +1057,6 @@ function applyLanguage(lang){
   $("footer").innerHTML = `${L.footerHint1}<br>${L.footerWordHint}`;
   $("againBtn").textContent = L.playAgainBtn;
   $("playAgainHint").textContent = L.playAgainHint;
-  $("clearMarksBtn").title = L.clearColors;
-  $("clearMarksBtn").setAttribute("aria-label", L.clearColors);
   buildDiffOptions();
   buildLenOptions();
 }
@@ -1109,7 +1089,6 @@ diffSel.addEventListener("change", newGame);
 $("newBtn").addEventListener("click", () => { newGame(); setMenu(false); });
 $("giveBtn").addEventListener("click", () => { if (!S.over) finish(false); });
 $("againBtn").addEventListener("click", newGame);
-$("clearMarksBtn").addEventListener("click", clearMarks);
 $("overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeOverlay(); });
 document.addEventListener("keydown", e => {
   if (e.key === "Enter"){ e.preventDefault(); if (!S.checking) S.over ? newGame() : submit(); return; }
