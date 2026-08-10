@@ -432,8 +432,9 @@ for (const lang of Object.keys(WORDS_BY_LANG)) {
 }
 const WORD_SETS_BY_LANG = Object.fromEntries(Object.entries(WORDS_BY_LANG)
   .map(([lang, words]) => [lang, Object.fromEntries(Object.entries(words).map(([k,v]) => [k, new Set(v)]))]));
-// languages where the free dictionary API (dictionaryapi.dev) reliably returns real entries —
-// tested fr/ar and got inconsistent 404/502s even for common words, so those stay list-only
+// languages with a reliable live dictionary lookup (see isRealWord below) — fr/ar were
+// tested against dictionaryapi.dev and got inconsistent 404/502s even for common words,
+// so those stay list-only for now
 const ONLINE_DICT_LANGS = new Set(["en"]);
 
 /* ---------------- Core scoring (Mastermind rules) ---------------- */
@@ -722,8 +723,16 @@ async function isRealWord(lang, word){
   if (dictCache.has(cacheKey)) return dictCache.get(cacheKey);
   let result;
   try {
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word)}`);
-    result = res.ok; // 200 = real word, 404 = not found
+    // Datamuse's "spelled like" endpoint, with definitions attached. Its corpus includes
+    // fuzzy near-matches and corpus-only junk (e.g. "aaaaaa") that aren't real words, so a
+    // hit only counts if the spelling matches exactly AND it carries at least one definition.
+    const res = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&max=1&md=d`);
+    if (res.ok) {
+      const [hit] = await res.json();
+      result = !!(hit && hit.word.toLowerCase() === word && Array.isArray(hit.defs) && hit.defs.length > 0);
+    } else {
+      result = undefined; // API returned an error — couldn't verify either way
+    }
   } catch {
     result = undefined; // offline / request failed — couldn't verify either way
   }
