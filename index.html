@@ -1274,7 +1274,7 @@ document.addEventListener("keydown", e => {
    ================================================================ */
 const API_BASE = "https://find-it-api.nizarh393.workers.dev";
 
-const MP = { me: null, ws: null, code: null, room: null, myGuesses: [], reconnecting: false };
+const MP = { me: null, ws: null, code: null, room: null, myGuesses: [], reconnecting: false, redChars: new Set() };
 const mp$ = id => document.getElementById(id);
 
 function mpLoadIdentity(){
@@ -1436,21 +1436,23 @@ function mpConnect(code){
 }
 
 function mpOnResult(data){
-  MP.myGuesses.push(data);
+  const g = { ...data, marks: Array.from({ length: data.guess.length }, () => "") };
+  MP.myGuesses.push(g);
+  if (g.result.wrong === g.guess.length) for (const ch of new Set(g.guess)) MP.redChars.add(ch); // fully wrong — every one of these is proven absent
   mpRenderRaceHistory();
   const el = mp$("mpInputs");
-  [...el.children].forEach(c => c.value = "");
+  [...el.children].forEach(c => { c.value = ""; delete c.dataset.localMark; c.classList.remove(...MARK_CLASSES); });
   if (el.children[0]) el.children[0].focus();
 }
 
 function mpOnState(data){
   const enteringRace = data.status === "playing" && (!MP.room || MP.room.status !== "playing");
   MP.room = data;
-  if (enteringRace) MP.myGuesses = [];
+  if (enteringRace){ MP.myGuesses = []; MP.redChars = new Set(); }
   mpRenderFromRoom();
   if (enteringRace){
     const el = mp$("mpInputs");
-    [...el.children].forEach(c => c.value = "");
+    [...el.children].forEach(c => { c.value = ""; delete c.dataset.localMark; c.classList.remove(...MARK_CLASSES); });
     if (el.children[0]) el.children[0].focus();
   }
 }
@@ -1492,7 +1494,7 @@ mp$("mpLeaveResultBtn").addEventListener("click", mpLeaveRoom);
 function mpLeaveRoom(){
   if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "leave" }));
   if (MP.ws){ try { MP.ws.close(); } catch {} }
-  MP.ws = null; MP.room = null; MP.code = null; MP.myGuesses = [];
+  MP.ws = null; MP.room = null; MP.code = null; MP.myGuesses = []; MP.redChars = new Set();
   mpRenderHome();
   mpShow("mpHome");
 }
@@ -1515,13 +1517,27 @@ function mpBuildRaceInputs(){
     inp.addEventListener("input", () => {
       const ok = room.mode === "num" ? /^[0-9]$/ : mpLetterRegex(room.lang);
       inp.value = ok.test(inp.value) ? inp.value.toUpperCase() : "";
+      delete inp.dataset.localMark; // fresh character typed in — starts unmarked
+      if (inp.value) mpPaintBox(inp, inp.value.toLowerCase(), ""); else inp.classList.remove(...MARK_CLASSES);
       if (inp.value && i < room.len - 1) el.children[i + 1].focus();
     });
     inp.addEventListener("keydown", e => {
-      if (e.key === "Backspace" && !inp.value && i > 0) el.children[i - 1].focus();
+      if (e.key === "Backspace" && !inp.value && i > 0){
+        e.preventDefault();
+        const p = el.children[i - 1];
+        p.focus(); p.value = ""; delete p.dataset.localMark; p.classList.remove(...MARK_CLASSES);
+      }
+      else if (e.key === "ArrowLeft" && i > 0) el.children[i - 1].focus();
+      else if (e.key === "ArrowRight" && i < room.len - 1) el.children[i + 1].focus();
       else if (e.key === "Enter") mpSubmitGuess();
     });
     inp.addEventListener("focus", () => inp.select());
+    inp.addEventListener("click", () => {
+      if (!inp.value) return;
+      mpCycleBoxMark(inp.value.toLowerCase(),
+        () => inp.dataset.localMark || "",
+        m => { if (m) inp.dataset.localMark = m; else delete inp.dataset.localMark; });
+    });
     el.appendChild(inp);
   }
 }
@@ -1564,15 +1580,65 @@ function mpRenderRaceHistory(){
   el.innerHTML = MP.myGuesses.map((g, gi) => `
     <div class="guess">
       <div class="no">${gi + 1}</div>
-      <div class="chars">${[...g.guess].map(c => `<div class="chip">${mpEsc(c)}</div>`).join("")}</div>
+      <div class="chars">${[...g.guess].map((c, ci) =>
+        `<div class="chip" data-gi="${gi}" data-ci="${ci}" data-ch="${c}">${mpEsc(c)}</div>`).join("")}</div>
       <div class="scores">
         <div class="score g"><i class="dot g"></i>${g.result.exact}</div>
         <div class="score a"><i class="dot a"></i>${g.result.partial}</div>
         <div class="score r"><i class="dot r"></i>${g.result.wrong}</div>
       </div>
+      <button class="row-clear" data-clear-gi="${gi}" type="button" title="Clear colours" aria-label="Clear colours">🗑</button>
     </div>`).join("");
   el.scrollTop = el.scrollHeight;
+  mpRefreshAllMarks();
 }
+
+/* ---- Colour marking (same idea as single-player: click a box/chip to cycle
+   green → amber → red; red is global — proven-absent chars turn red everywhere) ---- */
+function mpPaintBox(box, ch, localMark){
+  box.classList.remove(...MARK_CLASSES);
+  const cls = MP.redChars.has(ch) ? "mark-r" : localMark;
+  if (cls) box.classList.add(cls);
+}
+function mpRefreshAllMarks(){
+  [...mp$("mpInputs").children].forEach(cell => {
+    if (!cell.value) { cell.classList.remove(...MARK_CLASSES); return; }
+    mpPaintBox(cell, cell.value.toLowerCase(), cell.dataset.localMark || "");
+  });
+  mp$("mpHistory").querySelectorAll(".chip[data-ch]").forEach(chip => {
+    const g = MP.myGuesses[+chip.dataset.gi];
+    mpPaintBox(chip, chip.dataset.ch, g ? (g.marks[+chip.dataset.ci] || "") : "");
+  });
+}
+function mpCycleBoxMark(ch, getLocal, setLocal){
+  const isRed = MP.redChars.has(ch);
+  const next = nextMark(isRed ? "mark-r" : (getLocal() || ""));
+  if (next === "mark-r"){
+    MP.redChars.add(ch);
+    setLocal("");
+  } else {
+    if (isRed) MP.redChars.delete(ch);
+    setLocal(next);
+  }
+  mpRefreshAllMarks();
+}
+mp$("mpHistory").addEventListener("click", e => {
+  const rowClear = e.target.closest(".row-clear");
+  if (rowClear){
+    const g = MP.myGuesses[+rowClear.dataset.clearGi];
+    if (!g) return;
+    g.marks.fill("");
+    for (const ch of new Set(g.guess)) MP.redChars.delete(ch);
+    mpRefreshAllMarks();
+    return;
+  }
+  const chip = e.target.closest(".chip[data-ch]");
+  if (!chip) return;
+  const g = MP.myGuesses[+chip.dataset.gi];
+  if (!g) return;
+  const ci = +chip.dataset.ci;
+  mpCycleBoxMark(chip.dataset.ch, () => g.marks[ci] || "", m => { g.marks[ci] = m; });
+});
 function mpSubmitGuess(){
   const room = MP.room; if (!room || room.status !== "playing") return;
   const me = room.players.find(p => p.id === MP.me.id);
