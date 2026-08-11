@@ -1218,9 +1218,12 @@ function appendHistoryRow(){
 }
 
 /* ---------------- Theme ---------------- */
+const THEME_KEY = "findit_theme";
+let savedTheme = null;
+try { savedTheme = localStorage.getItem(THEME_KEY); } catch {}
 const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
-let theme = prefersLight ? "light" : "dark";
-let themeLocked = false;   // true once the user picks manually — stop following the OS
+let theme = savedTheme === "light" || savedTheme === "dark" ? savedTheme : (prefersLight ? "light" : "dark");
+let themeLocked = theme === savedTheme;   // true once the user picks manually (or we loaded a saved pick) — stop following the OS
 
 function applyTheme(newTheme){
   theme = newTheme;
@@ -1280,6 +1283,7 @@ menuBtn.addEventListener("click", () => setMenu(!settingsPanel.classList.contain
 $("themeBtn").addEventListener("click", () => {
   themeLocked = true;
   applyTheme(theme === "dark" ? "light" : "dark");
+  try { localStorage.setItem(THEME_KEY, theme); } catch {}
 });
 $("modeSeg").addEventListener("click", e => {
   const b = e.target.closest("button[data-mode]"); if (!b) return;
