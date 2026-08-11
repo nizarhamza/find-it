@@ -1047,7 +1047,7 @@ async function submit(){
   const r = score(S.secret, g);
   S.guesses.push({ guess: g, ...r, marks: Array.from({ length: g.length }, () => "") });
   if (r.wrong === g.length) for (const ch of new Set(g)) S.redChars.add(ch); // fully wrong guess — every one of these characters is proven absent
-  renderHistory();
+  appendHistoryRow();
   updateLeft();
   clearInputs();
 
@@ -1183,9 +1183,8 @@ const confetti = (() => {
   return { burst, stop };
 })();
 
-function renderHistory(){
-  if (!S.guesses.length){ histEl.innerHTML = `<div class="empty">${t("emptyHistory")}</div>`; return; }
-  histEl.innerHTML = S.guesses.map((g, gi) => `
+function guessRowHTML(g, gi){
+  return `
     <div class="guess">
       <div class="no">${gi+1}</div>
       <div class="chars">${[...g.guess].map((c, ci) =>
@@ -1196,7 +1195,24 @@ function renderHistory(){
         <div class="score r" title="${t("legendWrong")}"><i class="dot r"></i>${g.wrong}</div>
       </div>
       <button class="row-clear" data-clear-gi="${gi}" type="button" title="${t("clearColors")}" aria-label="${t("clearColors")}">🗑</button>
-    </div>`).join("");
+    </div>`;
+}
+let histBuiltCount = 0; // how many of S.guesses are already rendered as rows in #history
+// Full rebuild — only for a fresh board (new game / give up), where every row is new anyway.
+function renderHistory(){
+  histBuiltCount = 0;
+  if (!S.guesses.length){ histEl.innerHTML = `<div class="empty">${t("emptyHistory")}</div>`; return; }
+  histEl.innerHTML = S.guesses.map((g, gi) => guessRowHTML(g, gi)).join("");
+  histBuiltCount = S.guesses.length;
+  histEl.scrollTop = histEl.scrollHeight;
+  refreshAllMarks();
+}
+// Appends just the newest guess instead of re-rendering the whole list, so existing rows
+// don't replay their entrance animation (or flash) every time you submit another guess.
+function appendHistoryRow(){
+  if (histBuiltCount === 0) histEl.innerHTML = ""; // drop the "no guesses yet" placeholder
+  for (let gi = histBuiltCount; gi < S.guesses.length; gi++) histEl.insertAdjacentHTML("beforeend", guessRowHTML(S.guesses[gi], gi));
+  histBuiltCount = S.guesses.length;
   histEl.scrollTop = histEl.scrollHeight;
   refreshAllMarks();
 }
@@ -1659,10 +1675,8 @@ function mpRenderRace(){
   else if (me && me.solved){ mp$("mpMsg").textContent = "Solved! Waiting for the race to finish…"; mp$("mpMsg").className = "msg ok"; }
 }
 function toggleMpInputs(disabled){ [...mp$("mpInputs").children].forEach(i => i.disabled = disabled); }
-function mpRenderRaceHistory(){
-  const el = mp$("mpHistory");
-  if (!MP.myGuesses.length){ el.innerHTML = `<div class="empty">No guesses yet.</div>`; return; }
-  el.innerHTML = MP.myGuesses.map((g, gi) => `
+function mpGuessRowHTML(g, gi){
+  return `
     <div class="guess">
       <div class="no">${gi + 1}</div>
       <div class="chars">${[...g.guess].map((c, ci) =>
@@ -1673,8 +1687,23 @@ function mpRenderRaceHistory(){
         <div class="score r"><i class="dot r"></i>${g.result.wrong}</div>
       </div>
       <button class="row-clear" data-clear-gi="${gi}" type="button" title="Clear colours" aria-label="Clear colours">🗑</button>
-    </div>`).join("");
-  el.scrollTop = el.scrollHeight;
+    </div>`;
+}
+// mpRenderRace() (and so this) reruns on every room-state broadcast — i.e. every time ANY
+// player in the room takes a turn, not just you. Rebuilding the whole list each time would
+// replay every row's entrance animation on everyone else's moves too, so this only ever adds
+// the rows that are actually new; mpHistBuiltCount tracks how many of MP.myGuesses are rendered
+// (see mpBuiltLen above for the same idea applied to the input boxes).
+let mpHistBuiltCount = 0;
+function mpRenderRaceHistory(){
+  const el = mp$("mpHistory");
+  if (!MP.myGuesses.length){
+    if (mpHistBuiltCount !== 0){ el.innerHTML = `<div class="empty">No guesses yet.</div>`; mpHistBuiltCount = 0; }
+    return;
+  }
+  if (mpHistBuiltCount === 0) el.innerHTML = ""; // drop the "no guesses yet" placeholder
+  for (let gi = mpHistBuiltCount; gi < MP.myGuesses.length; gi++) el.insertAdjacentHTML("beforeend", mpGuessRowHTML(MP.myGuesses[gi], gi));
+  if (mpHistBuiltCount !== MP.myGuesses.length){ mpHistBuiltCount = MP.myGuesses.length; el.scrollTop = el.scrollHeight; }
   mpRefreshAllMarks();
 }
 
