@@ -337,7 +337,16 @@
   }
 
   /* ============ MULTIPLAYER ============ */
-  .mp-modal{position:relative;max-width:460px;max-height:88vh;overflow-y:auto}
+  /* an inline card in the normal page flow, not a popup dialog — no fixed position,
+     no backdrop; it just takes the single-player board's place while active */
+  .mp-modal{position:relative;max-width:100%;margin:0 0 16px}
+  /* single-player's board hides while the race screen is showing, so the page
+     reads as one view at a time instead of stacking both */
+  body.mp-active #statusCard,
+  body.mp-active #banner,
+  body.mp-active #playCard,
+  body.mp-active #settingsPanel,
+  body.mp-active #menuBtn{display:none}
   .mp-close{
     position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;
@@ -431,7 +440,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="statusCard">
     <div class="status">
       <div class="pill"><span id="triesLeftLabel">Tries left</span> <b id="left">10</b></div>
       <div class="pill" id="modePill">4 digits · repeats allowed</div>
@@ -456,29 +465,10 @@
     <div class="msg" id="msg"></div>
   </div>
 
-  <footer id="footer">
-    Type to auto-advance · Backspace to go back · Enter to check<br>
-    Word guesses must be real words from the built-in list.
-  </footer>
-</div>
-
-<canvas id="fx" class="hide"></canvas>
-
-<div class="overlay hide" id="overlay">
-  <div class="modal" id="modal">
-    <div class="trophy"><div class="ring"></div><div class="core" id="tCore">★</div></div>
-    <h2 id="oTitle">Congratulations!</h2>
-    <p id="oText"></p>
-    <div class="reveal" id="oReveal"></div>
-    <div class="stats" id="oStats"></div>
-    <button class="btn primary" id="againBtn">Play again</button>
-    <p class="hint" id="playAgainHint">Press Enter to play again · Esc to review the board</p>
-  </div>
-</div>
-
-<div class="overlay hide" id="mpOverlay">
-  <div class="modal mp-modal" id="mpModal">
-    <button class="mp-close" id="mpCloseBtn" type="button" aria-label="Close">✕</button>
+  <!-- Multiplayer race: an inline section of the page (not a popup) — shown in place of
+       the single-player board while active, so it reads as its own page, not a dialog. -->
+  <div class="modal mp-modal hide" id="mpOverlay">
+    <button class="mp-close" id="mpCloseBtn" type="button" aria-label="Back to game" title="Back to game">✕</button>
 
     <!-- Sign up: pick a name, get a permanent device-local player id -->
     <div class="mp-screen" id="mpAuth">
@@ -492,8 +482,24 @@
     <!-- Home: create or join a room -->
     <div class="mp-screen hide" id="mpHome">
       <h2>Hey, <span id="mpHomeName"></span> <button class="mp-edit" id="mpEditNameBtn" type="button" title="Change name">✎ edit</button></h2>
-      <p class="mp-sub" id="mpHomeSettings"></p>
-      <button class="btn primary" id="mpCreateBtn" type="button" style="width:100%">Create a room</button>
+      <p class="mp-sub">Set the room up, then share the code — everyone races the same hidden code and the first exact match wins.</p>
+      <div class="row">
+        <label class="lbl">Mode</label>
+        <div class="seg" id="mpModeSeg">
+          <button data-mode="num" class="on" type="button" id="mpNumbersBtn">Numbers</button>
+          <button data-mode="word" type="button" id="mpWordsBtn">Words</button>
+        </div>
+      </div>
+      <div class="row settings-row">
+        <label class="lbl">Settings</label>
+        <select id="mpLangSel" title="Language">
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+          <option value="ar">العربية</option>
+        </select>
+        <select id="mpLenSel" title="Word length"></select>
+      </div>
+      <button class="btn primary" id="mpCreateBtn" type="button" style="width:100%;margin-top:14px">Create a room</button>
       <div class="mp-divider"><span>or join with a code</span></div>
       <div class="inputs mp-code-inputs" id="mpJoinInputs"></div>
       <div class="msg err hide" id="mpHomeMsg"></div>
@@ -505,6 +511,7 @@
       <h2>Room code</h2>
       <div class="code-big" id="mpCodeBig"></div>
       <button class="btn" id="mpCopyBtn" type="button" style="width:100%">Copy code</button>
+      <p class="mp-hint" id="mpLobbySettings"></p>
       <div class="mp-players" id="mpLobbyPlayers"></div>
       <button class="btn primary hide" id="mpStartBtn" type="button" style="width:100%">Start race</button>
       <p class="mp-hint hide" id="mpWaitHint">Waiting for the host to start…</p>
@@ -537,6 +544,25 @@
       <p class="mp-hint hide" id="mpRematchHint">Waiting for the host to start a new round…</p>
       <button class="btn" id="mpLeaveResultBtn" type="button" style="width:100%;margin-top:10px">Back to home</button>
     </div>
+  </div>
+
+  <footer id="footer">
+    Type to auto-advance · Backspace to go back · Enter to check<br>
+    Word guesses must be real words from the built-in list.
+  </footer>
+</div>
+
+<canvas id="fx" class="hide"></canvas>
+
+<div class="overlay hide" id="overlay">
+  <div class="modal" id="modal">
+    <div class="trophy"><div class="ring"></div><div class="core" id="tCore">★</div></div>
+    <h2 id="oTitle">Congratulations!</h2>
+    <p id="oText"></p>
+    <div class="reveal" id="oReveal"></div>
+    <div class="stats" id="oStats"></div>
+    <button class="btn primary" id="againBtn">Play again</button>
+    <p class="hint" id="playAgainHint">Press Enter to play again · Esc to review the board</p>
   </div>
 </div>
 
@@ -1274,7 +1300,10 @@ document.addEventListener("keydown", e => {
    ================================================================ */
 const API_BASE = "https://find-it-api.nizarh393.workers.dev";
 
-const MP = { me: null, ws: null, code: null, room: null, myGuesses: [], reconnecting: false, redChars: new Set() };
+const MP = {
+  me: null, ws: null, code: null, room: null, myGuesses: [], reconnecting: false, redChars: new Set(),
+  settings: { mode: "num", len: 4, lang: "en" }, // room settings the host picks — own state, doesn't touch single-player's S
+};
 const mp$ = id => document.getElementById(id);
 
 function mpLoadIdentity(){
@@ -1292,12 +1321,19 @@ function mpEsc(s){ return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":
 
 function mpShow(screen){
   ["mpAuth","mpHome","mpLobby","mpRace","mpResult"].forEach(id => mp$(id).classList.toggle("hide", id !== screen));
-  if (screen !== "mpResult") mp$("mpModal").classList.remove("win", "lose");
+  if (screen !== "mpResult") mp$("mpOverlay").classList.remove("win", "lose");
+}
+
+// Swaps the page between the single-player board and the multiplayer race section — an
+// inline view switch, not a popup — via a body-level class the CSS hides the board on.
+function mpSetOpen(open){
+  mp$("mpOverlay").classList.toggle("hide", !open);
+  document.body.classList.toggle("mp-active", open);
 }
 
 function mpOpen(){
   mpLoadIdentity();
-  mp$("mpOverlay").classList.remove("hide");
+  mpSetOpen(true);
   if (!MP.me.nickname){
     mpShow("mpAuth");
     mp$("mpAuthMsg").classList.add("hide");
@@ -1309,11 +1345,10 @@ function mpOpen(){
     mpShow("mpHome");
   }
 }
-function mpClose(){ mp$("mpOverlay").classList.add("hide"); } // hides only; the socket/game keeps running
+function mpClose(){ mpSetOpen(false); } // hides only; the socket/game keeps running
 
 mp$("onlineBtn").addEventListener("click", () => { mpOpen(); setMenu(false); });
 mp$("mpCloseBtn").addEventListener("click", mpClose);
-mp$("mpOverlay").addEventListener("click", e => { if (e.target === e.currentTarget) mpClose(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !mp$("mpOverlay").classList.contains("hide")) mpClose(); });
 
 /* ---- Sign up ---- */
@@ -1340,12 +1375,39 @@ mp$("mpEditNameBtn").addEventListener("click", () => {
 });
 
 /* ---- Home: create or join ---- */
-function mpModeSummary(){
-  return S.mode === "num" ? t("digitsSuffix", S.len) : t("wordSuffixList", S.len);
+// Room settings picker — a mirror of the single-player mode/length/language row (see
+// buildLenOptions above) but scoped to MP.settings, so choosing a room's rules never
+// touches single-player's S.
+function mpBuildLenOptions(){
+  const opts = MP.settings.mode === "num"
+    ? [3,4,5,6].map(n => [n, `${n} digits`])
+    : Object.keys(WORDS_BY_LANG[MP.settings.lang]).map(Number).sort((a,b)=>a-b).map(n => [n, `${n} letters`]);
+  mp$("mpLenSel").innerHTML = opts.map(([v,label]) => `<option value="${v}">${label}</option>`).join("");
+  const want = opts.some(o => o[0] === MP.settings.len) ? MP.settings.len : (MP.settings.mode === "num" ? 4 : 5);
+  MP.settings.len = want;
+  mp$("mpLenSel").value = String(want);
 }
+function mpSyncSettingsUI(){
+  mp$("mpNumbersBtn").classList.toggle("on", MP.settings.mode === "num");
+  mp$("mpWordsBtn").classList.toggle("on", MP.settings.mode === "word");
+  mp$("mpLangSel").value = MP.settings.lang;
+  mpBuildLenOptions();
+}
+mp$("mpModeSeg").addEventListener("click", e => {
+  const b = e.target.closest("button[data-mode]");
+  if (!b) return;
+  MP.settings.mode = b.dataset.mode;
+  mpSyncSettingsUI();
+});
+mp$("mpLangSel").addEventListener("change", () => {
+  MP.settings.lang = mp$("mpLangSel").value;
+  mpBuildLenOptions();
+});
+mp$("mpLenSel").addEventListener("change", () => { MP.settings.len = +mp$("mpLenSel").value; });
+
 function mpRenderHome(){
   mp$("mpHomeName").textContent = MP.me.nickname;
-  mp$("mpHomeSettings").textContent = "New rooms use your current Mode/Settings (" + mpModeSummary() + "). Everyone races the same hidden code — first exact match wins.";
+  mpSyncSettingsUI();
   mpBuildCodeInputs();
 }
 function mpBuildCodeInputs(){
@@ -1380,7 +1442,7 @@ async function mpCreate(){
     const res = await fetch(API_BASE + "/api/rooms", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode: S.mode, len: S.len, lang: S.lang, hostId: MP.me.id, hostName: MP.me.nickname }),
+      body: JSON.stringify({ mode: MP.settings.mode, len: MP.settings.len, lang: MP.settings.lang, hostId: MP.me.id, hostName: MP.me.nickname }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Could not create room");
@@ -1460,7 +1522,7 @@ function mpOnState(data){
 function mpRenderFromRoom(){
   const room = MP.room;
   if (!room) return;
-  mp$("mpOverlay").classList.remove("hide");
+  mpSetOpen(true);
   if (room.status === "waiting"){ mpRenderLobby(); mpShow("mpLobby"); }
   else if (room.status === "playing"){ mpRenderRace(); mpShow("mpRace"); }
   else { mpRenderResult(); mpShow("mpResult"); }
@@ -1470,6 +1532,7 @@ function mpRenderFromRoom(){
 function mpRenderLobby(){
   const room = MP.room;
   mp$("mpCodeBig").innerHTML = [...MP.code].map(d => `<span>${d}</span>`).join("");
+  mp$("mpLobbySettings").textContent = room.mode === "num" ? `${room.len} digits` : `${room.len}-letter word`;
   mp$("mpLobbyPlayers").innerHTML = room.players.map(p => `
     <div class="mp-player${p.id === MP.me.id ? " me" : ""}">
       <span class="mp-name">${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
@@ -1657,8 +1720,8 @@ function mpSubmitGuess(){
 function mpRenderResult(){
   const room = MP.room;
   const won = room.winnerId === MP.me.id;
-  mp$("mpModal").classList.toggle("win", won);
-  mp$("mpModal").classList.toggle("lose", !won);
+  mp$("mpOverlay").classList.toggle("win", won);
+  mp$("mpOverlay").classList.toggle("lose", !won);
   mp$("mpTrophyCore").textContent = won ? "★" : "🏁";
   const winner = room.players.find(p => p.id === room.winnerId);
   mp$("mpResultTitle").textContent = won ? "You won! 🎉" : (winner ? `${winner.nickname} won the race` : "Round over");
