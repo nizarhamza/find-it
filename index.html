@@ -11,6 +11,11 @@
 <meta property="og:description" content="Crack the hidden code. Numbers or words, three difficulty levels.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e1117'/%3E%3Ccircle cx='18' cy='32' r='7' fill='%2339d98a'/%3E%3Ccircle cx='36' cy='32' r='7' fill='%23ffc247'/%3E%3Ccircle cx='51' cy='32' r='5' fill='%23ff6b6b'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Find It">
 <style>
   /* ============ DARK THEME (default) ============ */
   :root, [data-theme="dark"]{
@@ -438,6 +443,9 @@
         </div>
         <div class="row">
           <button class="btn" id="onlineBtn" style="width:100%">🌐 Play online — race a friend</button>
+        </div>
+        <div class="row">
+          <button class="btn hide" id="installBtn" type="button" style="width:100%">⬇️ Install app</button>
         </div>
       </div>
     </div>
@@ -1278,6 +1286,33 @@ function setMenu(open){
   menuBtn.setAttribute("aria-expanded", String(open));
 }
 menuBtn.addEventListener("click", () => setMenu(!settingsPanel.classList.contains("open")));
+
+/* ---------------- Install as app ---------------- */
+// Chromium-based browsers fire this instead of showing their own install UI when the page
+// is installable, letting us show a plain in-app button for it. Safari/iOS never fire it —
+// there's no programmatic install there, only Share -> Add to Home Screen — so the button
+// just stays hidden and users get there the normal iOS way.
+const installBtn = $("installBtn");
+let deferredInstallPrompt = null;
+addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  installBtn.classList.remove("hide");
+});
+installBtn.addEventListener("click", async () => {
+  if (!deferredInstallPrompt) return;
+  installBtn.disabled = true;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  installBtn.classList.add("hide");
+  installBtn.disabled = false;
+});
+addEventListener("appinstalled", () => { deferredInstallPrompt = null; installBtn.classList.add("hide"); });
+
+if ("serviceWorker" in navigator) {
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
 
 /* ---------------- Wiring ---------------- */
 $("themeBtn").addEventListener("click", () => {

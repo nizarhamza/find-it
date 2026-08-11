@@ -58,6 +58,25 @@ git push
 Cloudflare picks it up within a minute. Roll back any time from the Pages dashboard →
 **Deployments** → pick an older build → *Rollback*.
 
+If the change touches `index.html`, also bump the version suffix on `CACHE` at the top of
+[`sw.js`](sw.js) (e.g. `find-it-shell-v1` → `v2`). That's what tells an already-installed
+copy to drop its cached shell and fetch the new one — without it, installed users can be
+stuck on an old cached version of the page for longer than expected while offline.
+
+---
+
+## Installable as an app
+
+`manifest.webmanifest` + `sw.js` + `icons/` make the site an installable PWA — desktop
+Chrome/Edge show an install icon in the address bar, Android Chrome can add it to the home
+screen, and the in-app **Install app** button (in the settings menu) does the same via the
+`beforeinstallprompt` API. iOS Safari has no programmatic install; users get there the normal
+way (Share → Add to Home Screen), which is why the button never appears there.
+
+The service worker only caches same-origin static files — the multiplayer Worker API/WebSocket
+calls always go straight to the network, so racing a friend still needs a live connection even
+when the app itself is installed and can open offline.
+
 ---
 
 ## Skipping git entirely
