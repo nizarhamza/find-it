@@ -46,7 +46,7 @@ export class Room {
       startedAt: null,
       finishedAt: null,
       players: {
-        [hostId]: { id: hostId, nickname: String(hostName).slice(0, 24), attempts: 0, solved: false, finishedAt: null, rank: null },
+        [hostId]: { id: hostId, nickname: String(hostName).slice(0, 24), attempts: 0, solved: false, gaveUp: false, finishedAt: null, rank: null },
       },
     };
     await this.state.storage.put("room", room);
@@ -72,7 +72,7 @@ export class Room {
     }
 
     if (isNewPlayer) {
-      room.players[playerId] = { id: playerId, nickname, attempts: 0, solved: false, finishedAt: null, rank: null };
+      room.players[playerId] = { id: playerId, nickname, attempts: 0, solved: false, gaveUp: false, finishedAt: null, rank: null };
     } else {
       room.players[playerId].nickname = nickname; // allow a rename to stick on reconnect
     }
@@ -108,7 +108,23 @@ export class Room {
       room.startedAt = null;
       room.finishedAt = null;
       for (const p of Object.values(room.players)) {
-        p.attempts = 0; p.solved = false; p.finishedAt = null; p.rank = null;
+        p.attempts = 0; p.solved = false; p.gaveUp = false; p.finishedAt = null; p.rank = null;
+      }
+      await this.state.storage.put("room", room);
+      return this.broadcastState();
+    }
+
+    // Conceding stops that player's guessing but doesn't reveal the secret early — the
+    // round still ends the normal way (someone solves it) unless this was the last player
+    // still actively racing, in which case there's no one left to win it.
+    if (data.type === "giveup" && room.status === "playing") {
+      const player = room.players[playerId];
+      if (!player || player.solved || player.gaveUp) return;
+      player.gaveUp = true;
+      const stillRacing = Object.values(room.players).some(p => !p.solved && !p.gaveUp);
+      if (!stillRacing && !room.winnerId) {
+        room.status = "finished";
+        room.finishedAt = Date.now();
       }
       await this.state.storage.put("room", room);
       return this.broadcastState();
@@ -116,7 +132,7 @@ export class Room {
 
     if (data.type === "guess" && room.status === "playing") {
       const player = room.players[playerId];
-      if (!player || player.solved) return;
+      if (!player || player.solved || player.gaveUp) return;
       const guess = String(data.value || "").toLowerCase();
       if (guess.length !== room.len) return;
 
@@ -168,7 +184,7 @@ export class Room {
       secret: room.status === "finished" ? room.secret : undefined,
       players: Object.values(room.players)
         .sort((a, b) => (a.rank || 99) - (b.rank || 99))
-        .map(p => ({ id: p.id, nickname: p.nickname, attempts: p.attempts, solved: p.solved, rank: p.rank })),
+        .map(p => ({ id: p.id, nickname: p.nickname, attempts: p.attempts, solved: p.solved, gaveUp: p.gaveUp, rank: p.rank })),
     });
     for (const ws of this.state.getWebSockets()) {
       try { ws.send(payload); } catch { /* socket gone — it'll drop off on next broadcast */ }
