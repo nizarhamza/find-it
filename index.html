@@ -386,6 +386,7 @@
   .mp-player.me{border-color:var(--accent)}
   .mp-player.solved{border-color:var(--green-b)}
   .mp-player.winner{border-color:var(--green-b);background:linear-gradient(180deg,var(--raise),var(--panel))}
+  .mp-player.gaveup{opacity:.6}
   .mp-player .mp-name{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mp-player .mp-tag{
     flex:none;font-size:10px;padding:3px 8px;border-radius:999px;
@@ -394,6 +395,7 @@
   }
   .mp-player .mp-attempts{flex:none;color:var(--muted);font-size:12.5px}
   .mp-player.solved .mp-attempts{color:var(--green);font-weight:700}
+  .mp-player.gaveup .mp-attempts{font-style:italic}
 
   @media (max-width:560px){
     .mp-modal{padding:22px 16px}
@@ -530,7 +532,10 @@
       <div class="divider"></div>
       <div class="inputs" id="mpInputs"></div>
       <div class="msg" id="mpMsg"></div>
-      <button class="btn" id="mpLeaveRaceBtn" type="button" style="width:100%;margin-top:10px">Leave race</button>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="mpGiveUpBtn" type="button" style="flex:1">Give up</button>
+        <button class="btn" id="mpLeaveRaceBtn" type="button" style="flex:1">Leave race</button>
+      </div>
     </div>
 
     <!-- Result: reveal + standings -->
@@ -1620,6 +1625,11 @@ function mpSizeRaceCells(){
 }
 addEventListener("resize", () => { if (MP.room && MP.room.status === "playing") mpSizeRaceCells(); });
 
+function mpPlayerStatus(p){
+  if (p.gaveUp) return "gave up";
+  const tries = `${p.attempts} ${p.attempts === 1 ? "try" : "tries"}`;
+  return p.solved ? `#${p.rank} · ${tries}` : tries;
+}
 function mpRenderRace(){
   const room = MP.room;
   mpBuildRaceInputs();
@@ -1628,13 +1638,17 @@ function mpRenderRace(){
   const me = room.players.find(p => p.id === MP.me.id);
   mp$("mpMyAttempts").textContent = me ? me.attempts : 0;
   mp$("mpRacePlayers").innerHTML = room.players.map(p => `
-    <div class="mp-player${p.solved ? " solved" : ""}${p.id === MP.me.id ? " me" : ""}">
+    <div class="mp-player${p.solved ? " solved" : ""}${p.gaveUp ? " gaveup" : ""}${p.id === MP.me.id ? " me" : ""}">
       <span class="mp-name">${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
       ${p.id === room.hostId ? '<span class="mp-tag">host</span>' : ""}
-      <span class="mp-attempts">${p.solved ? "#" + p.rank + " · " : ""}${p.attempts} ${p.attempts === 1 ? "try" : "tries"}</span>
+      <span class="mp-attempts">${mpPlayerStatus(p)}</span>
     </div>`).join("");
   mpRenderRaceHistory();
-  toggleMpInputs(!!(me && me.solved));
+  const meDone = !!(me && (me.solved || me.gaveUp));
+  toggleMpInputs(meDone);
+  mp$("mpGiveUpBtn").disabled = meDone;
+  if (me && me.gaveUp){ mp$("mpMsg").textContent = "You gave up — waiting for the race to finish…"; mp$("mpMsg").className = "msg"; }
+  else if (me && me.solved){ mp$("mpMsg").textContent = "Solved! Waiting for the race to finish…"; mp$("mpMsg").className = "msg ok"; }
 }
 function toggleMpInputs(disabled){ [...mp$("mpInputs").children].forEach(i => i.disabled = disabled); }
 function mpRenderRaceHistory(){
@@ -1705,7 +1719,7 @@ mp$("mpHistory").addEventListener("click", e => {
 function mpSubmitGuess(){
   const room = MP.room; if (!room || room.status !== "playing") return;
   const me = room.players.find(p => p.id === MP.me.id);
-  if (me && me.solved) return;
+  if (me && (me.solved || me.gaveUp)) return;
   const el = mp$("mpInputs");
   const guess = [...el.children].map(i => i.value).join("").toLowerCase();
   if (guess.length !== room.len){
@@ -1715,6 +1729,15 @@ function mpSubmitGuess(){
   mp$("mpMsg").textContent = "";
   if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "guess", value: guess }));
 }
+// Concede the round — stops your guessing but doesn't reveal the secret; you just wait
+// for the race to finish normally (see room.js: ends early only once no one is left racing).
+function mpGiveUp(){
+  const room = MP.room; if (!room || room.status !== "playing") return;
+  const me = room.players.find(p => p.id === MP.me.id);
+  if (me && (me.solved || me.gaveUp)) return;
+  if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "giveup" }));
+}
+mp$("mpGiveUpBtn").addEventListener("click", mpGiveUp);
 
 /* ---- Result ---- */
 function mpRenderResult(){
@@ -1730,9 +1753,9 @@ function mpRenderResult(){
     ? [...room.secret].map((c, i) => `<div class="chip" style="animation-delay:${i * 70}ms">${mpEsc(c.toUpperCase())}</div>`).join("")
     : "";
   mp$("mpStandings").innerHTML = room.players.map(p => `
-    <div class="mp-player${p.solved ? " solved" : ""}${p.id === room.winnerId ? " winner" : ""}${p.id === MP.me.id ? " me" : ""}">
+    <div class="mp-player${p.solved ? " solved" : ""}${p.gaveUp ? " gaveup" : ""}${p.id === room.winnerId ? " winner" : ""}${p.id === MP.me.id ? " me" : ""}">
       <span class="mp-name">${p.solved ? "#" + p.rank + " " : ""}${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
-      <span class="mp-attempts">${p.attempts} ${p.attempts === 1 ? "try" : "tries"}</span>
+      <span class="mp-attempts">${p.gaveUp ? "gave up" : `${p.attempts} ${p.attempts === 1 ? "try" : "tries"}`}</span>
     </div>`).join("");
   const isHost = room.hostId === MP.me.id;
   mp$("mpRematchBtn").classList.toggle("hide", !isHost);
