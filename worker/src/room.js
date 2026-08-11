@@ -157,7 +157,13 @@ export class Room {
     }
 
     if (data.type === "leave") {
+      const wasHost = playerId === room.hostId;
       delete room.players[playerId];
+      if (wasHost) {
+        // Object key order follows insertion order for these ids, so this hands the role
+        // to whoever's been in the room longest — an empty room just ends up host-less.
+        room.hostId = Object.keys(room.players)[0] || null;
+      }
       await this.state.storage.put("room", room);
       await this.broadcastState();
       ws.close(1000, "left");
