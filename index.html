@@ -393,6 +393,7 @@
     background:var(--sunk);color:var(--accent);border:1px solid var(--line);
     text-transform:uppercase;letter-spacing:.4px;
   }
+  .mp-player .mp-tag.mp-wins{color:var(--amber);border-color:var(--amber-b);text-transform:none;letter-spacing:0}
   .mp-player .mp-attempts{flex:none;color:var(--muted);font-size:12.5px}
   .mp-player.solved .mp-attempts{color:var(--green);font-weight:700}
   .mp-player.gaveup .mp-attempts{font-style:italic}
@@ -1534,6 +1535,11 @@ function mpRenderFromRoom(){
 }
 
 /* ---- Lobby ---- */
+// Wins carry over across rematches in the same room — this is the room's running score,
+// shown next to every player wherever their row appears (lobby/race/result).
+function mpWinsTag(p){
+  return p.wins ? `<span class="mp-tag mp-wins">🏆 ${p.wins}</span>` : "";
+}
 function mpRenderLobby(){
   const room = MP.room;
   mp$("mpCodeBig").innerHTML = [...MP.code].map(d => `<span>${d}</span>`).join("");
@@ -1542,6 +1548,7 @@ function mpRenderLobby(){
     <div class="mp-player${p.id === MP.me.id ? " me" : ""}">
       <span class="mp-name">${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
       ${p.id === room.hostId ? '<span class="mp-tag">host</span>' : ""}
+      ${mpWinsTag(p)}
     </div>`).join("");
   const isHost = room.hostId === MP.me.id;
   mp$("mpStartBtn").classList.toggle("hide", !isHost);
@@ -1641,6 +1648,7 @@ function mpRenderRace(){
     <div class="mp-player${p.solved ? " solved" : ""}${p.gaveUp ? " gaveup" : ""}${p.id === MP.me.id ? " me" : ""}">
       <span class="mp-name">${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
       ${p.id === room.hostId ? '<span class="mp-tag">host</span>' : ""}
+      ${mpWinsTag(p)}
       <span class="mp-attempts">${mpPlayerStatus(p)}</span>
     </div>`).join("");
   mpRenderRaceHistory();
@@ -1755,6 +1763,7 @@ function mpRenderResult(){
   mp$("mpStandings").innerHTML = room.players.map(p => `
     <div class="mp-player${p.solved ? " solved" : ""}${p.gaveUp ? " gaveup" : ""}${p.id === room.winnerId ? " winner" : ""}${p.id === MP.me.id ? " me" : ""}">
       <span class="mp-name">${p.solved ? "#" + p.rank + " " : ""}${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
+      ${mpWinsTag(p)}
       <span class="mp-attempts">${p.gaveUp ? "gave up" : `${p.attempts} ${p.attempts === 1 ? "try" : "tries"}`}</span>
     </div>`).join("");
   const isHost = room.hostId === MP.me.id;

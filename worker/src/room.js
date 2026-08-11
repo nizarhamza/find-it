@@ -46,7 +46,7 @@ export class Room {
       startedAt: null,
       finishedAt: null,
       players: {
-        [hostId]: { id: hostId, nickname: String(hostName).slice(0, 24), attempts: 0, solved: false, gaveUp: false, finishedAt: null, rank: null },
+        [hostId]: { id: hostId, nickname: String(hostName).slice(0, 24), attempts: 0, solved: false, gaveUp: false, wins: 0, finishedAt: null, rank: null },
       },
     };
     await this.state.storage.put("room", room);
@@ -72,7 +72,7 @@ export class Room {
     }
 
     if (isNewPlayer) {
-      room.players[playerId] = { id: playerId, nickname, attempts: 0, solved: false, gaveUp: false, finishedAt: null, rank: null };
+      room.players[playerId] = { id: playerId, nickname, attempts: 0, solved: false, gaveUp: false, wins: 0, finishedAt: null, rank: null };
     } else {
       room.players[playerId].nickname = nickname; // allow a rename to stick on reconnect
     }
@@ -108,6 +108,7 @@ export class Room {
       room.startedAt = null;
       room.finishedAt = null;
       for (const p of Object.values(room.players)) {
+        // wins carries over — it's the room's running score across rounds, not this round's state
         p.attempts = 0; p.solved = false; p.gaveUp = false; p.finishedAt = null; p.rank = null;
       }
       await this.state.storage.put("room", room);
@@ -148,6 +149,7 @@ export class Room {
           room.winnerId = playerId;
           room.status = "finished";
           room.finishedAt = Date.now();
+          player.wins = (player.wins || 0) + 1;
         }
       }
       await this.state.storage.put("room", room);
@@ -184,7 +186,7 @@ export class Room {
       secret: room.status === "finished" ? room.secret : undefined,
       players: Object.values(room.players)
         .sort((a, b) => (a.rank || 99) - (b.rank || 99))
-        .map(p => ({ id: p.id, nickname: p.nickname, attempts: p.attempts, solved: p.solved, gaveUp: p.gaveUp, rank: p.rank })),
+        .map(p => ({ id: p.id, nickname: p.nickname, attempts: p.attempts, solved: p.solved, gaveUp: p.gaveUp, wins: p.wins || 0, rank: p.rank })),
     });
     for (const ws of this.state.getWebSockets()) {
       try { ws.send(payload); } catch { /* socket gone — it'll drop off on next broadcast */ }
