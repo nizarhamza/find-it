@@ -629,6 +629,29 @@ const WORD_SETS_BY_LANG = Object.fromEntries(Object.entries(WORDS_BY_LANG)
 // so those stay list-only for now
 const ONLINE_DICT_LANGS = new Set(["en"]);
 
+// Real dictionary words fetched from Datamuse, cached per "lang:len" so randomSecret() can
+// draw from way more than the curated list. Fetches happen in the background and the browser
+// keeps them running even after the triggering call returns, so this never blocks starting a
+// new game: the very first word round of a given length falls back to the curated list while
+// the pool warms up, then every later round at that length picks from up to ~1000 real words.
+// Mirrors the pool in worker/src/game-core.js (server-side, for multiplayer).
+const wordPoolCache = new Map();
+function warmWordPool(lang, len){
+  const key = lang + ":" + len;
+  if (wordPoolCache.has(key)) return; // already cached, or a fetch is already in flight
+  wordPoolCache.set(key, []); // placeholder so we don't fire duplicate fetches
+  const pattern = encodeURIComponent("?".repeat(len)); // Datamuse "spelled like": ? = any one letter
+  fetch(`https://api.datamuse.com/words?sp=${pattern}&max=1000&md=d`)
+    .then(res => res.ok ? res.json() : [])
+    .then(hits => {
+      const words = hits
+        .filter(h => h.word.length === len && LETTER_REGEX[lang].test(h.word) && Array.isArray(h.defs) && h.defs.length > 0)
+        .map(h => h.word);
+      wordPoolCache.set(key, [...new Set(words)]);
+    })
+    .catch(() => {}); // offline / API hiccup — leave the placeholder empty, curated list keeps working
+}
+
 /* ---------------- Core scoring (Mastermind rules) ---------------- */
 function score(secret, guess){
   const n = secret.length;
@@ -813,6 +836,11 @@ function randomSecret(){
     let s = "";
     for (let i = 0; i < S.len; i++) s += Math.floor(Math.random() * 10);
     return s;
+  }
+  if (ONLINE_DICT_LANGS.has(S.lang)){
+    warmWordPool(S.lang, S.len); // kick off (or keep) the fetch so next round has a bigger pool
+    const onlinePool = wordPoolCache.get(S.lang + ":" + S.len);
+    if (onlinePool && onlinePool.length) return onlinePool[Math.floor(Math.random() * onlinePool.length)];
   }
   const list = WORDS_BY_LANG[S.lang][S.len];
   return list[Math.floor(Math.random() * list.length)];

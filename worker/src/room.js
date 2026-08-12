@@ -38,7 +38,7 @@ export class Room {
       mode,
       len: Number(len),
       lang: lang || "en",
-      secret: randomSecret(mode, Number(len), lang || "en"),
+      secret: await randomSecret(mode, Number(len), lang || "en"),
       status: "waiting", // waiting -> playing -> finished
       hostId,
       winnerId: null,
@@ -102,7 +102,7 @@ export class Room {
     }
 
     if (data.type === "rematch" && playerId === room.hostId && room.status === "finished") {
-      room.secret = randomSecret(room.mode, room.len, room.lang);
+      room.secret = await randomSecret(room.mode, room.len, room.lang);
       room.status = "waiting";
       room.winnerId = null;
       room.startedAt = null;
