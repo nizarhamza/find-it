@@ -62,11 +62,46 @@ export function score(secret, guess){
 }
 
 /* ---------------- Secret generation ---------------- */
-export function randomSecret(mode, len, lang){
+// Real dictionary words fetched from Datamuse, cached per "lang:len" for as long as this
+// Durable Object instance stays warm — only the first word-mode secret of a given length in
+// a room pays the network round trip; every later one in that same room is instant. Mirrors
+// the client-side pool in ../../index.html (see ONLINE_DICT_LANGS there — English only for
+// now, no reliable free dictionary API for fr/ar).
+const wordPoolCache = new Map();
+
+async function fetchWordPool(lang, len){
+  const pattern = encodeURIComponent("?".repeat(len)); // Datamuse "spelled like": ? = any one letter
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3000);
+  try {
+    const res = await fetch(`https://api.datamuse.com/words?sp=${pattern}&max=1000&md=d`, { signal: controller.signal });
+    if (!res.ok) return [];
+    const hits = await res.json();
+    const regex = LETTER_REGEX[lang] || LETTER_REGEX.en;
+    // a hit only counts if it's exactly the right length, spelled with this language's
+    // letters, and carries at least one definition (Datamuse's corpus includes junk
+    // near-matches that aren't real words)
+    return [...new Set(hits
+      .filter(h => h.word.length === len && regex.test(h.word) && Array.isArray(h.defs) && h.defs.length > 0)
+      .map(h => h.word))];
+  } catch {
+    return []; // offline / timed out / API hiccup — caller falls back to the curated list
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function randomSecret(mode, len, lang){
   if (mode === "num"){
     let s = "";
     for (let i = 0; i < len; i++) s += Math.floor(Math.random() * 10);
     return s;
+  }
+  if (lang === "en"){
+    const key = lang + ":" + len;
+    if (!wordPoolCache.has(key)) wordPoolCache.set(key, await fetchWordPool(lang, len));
+    const onlinePool = wordPoolCache.get(key);
+    if (onlinePool.length) return onlinePool[Math.floor(Math.random() * onlinePool.length)];
   }
   const list = (WORD_SETS_BY_LANG[lang] || WORD_SETS_BY_LANG.en)[len];
   const pool = list ? [...list] : [...WORD_SETS_BY_LANG.en[5]];
