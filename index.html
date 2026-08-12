@@ -849,6 +849,7 @@ function randomSecret(){
 function newGame(){
   S.max = +diffSel.value;
   S.len = +lenSel.value;
+  saveSettings(); // remember mode/language/length/difficulty for next visit
   S.gen++; // invalidates any in-flight word check from a previous round
   S.secret = randomSecret();
   S.guesses = [];
@@ -1277,9 +1278,27 @@ if (window.matchMedia){
   mq.addEventListener ? mq.addEventListener("change", onChange) : mq.addListener(onChange);
 }
 
+/* ---------------- Saved settings ---------------- */
+// Remembers the last-used mode/language/length/difficulty across visits — same idea as the
+// theme preference above. Applied once at startup (see bottom of file); kept up to date from
+// newGame(), since every settings change (mode switch, language switch, length/difficulty
+// select, new game) already funnels through there.
+const SETTINGS_KEY = "findit_settings";
+function loadSavedSettings(){
+  try {
+    const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    if (!raw || typeof raw !== "object") return null;
+    return raw;
+  } catch { return null; }
+}
+function saveSettings(){
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ mode: S.mode, lang: S.lang, len: S.len, diff: diffSel.value })); } catch {}
+}
+
 /* ---------------- Language ---------------- */
 function applyLanguage(lang){
   S.lang = lang;
+  langSel.value = lang;
   const L = I18N[lang];
   document.documentElement.lang = lang;
   document.documentElement.dir = L.dir;
@@ -1868,7 +1887,16 @@ function mpRenderResult(){
 }
 mp$("mpRematchBtn").addEventListener("click", () => { if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "rematch" })); });
 
-applyLanguage(S.lang);
+// restore last visit's mode/language/length/difficulty, if any, before the first render
+const saved = loadSavedSettings();
+if (saved){
+  if (saved.mode === "num" || saved.mode === "word") S.mode = saved.mode;
+  if (I18N[saved.lang]) S.lang = saved.lang;
+  if (Number.isInteger(saved.len)) S.len = saved.len;
+}
+document.querySelectorAll("#modeSeg button[data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === S.mode));
+applyLanguage(S.lang); // builds the length/difficulty options for the restored mode+language
+if (saved && [...diffSel.options].some(o => o.value === saved.diff)) diffSel.value = saved.diff;
 newGame();
 </script>
 </body>
