@@ -298,6 +298,8 @@
   .modal.lose .reveal .chip{color:var(--red);border-color:var(--red-b)}
   @keyframes flip{from{opacity:0;transform:rotateX(-90deg) translateY(-8px)}to{opacity:1;transform:none}}
 
+  .definition{margin:-8px 0 20px;font-size:13px;font-style:italic;color:var(--muted);line-height:1.5}
+
   .stats{display:flex;gap:8px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
   .stat{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:84px}
   .stat span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
@@ -574,6 +576,7 @@
     <h2 id="oTitle">Congratulations!</h2>
     <p id="oText"></p>
     <div class="reveal" id="oReveal"></div>
+    <p class="definition hide" id="oDefinition"></p>
     <div class="stats" id="oStats"></div>
     <button class="btn primary" id="againBtn">Play again</button>
     <p class="hint" id="playAgainHint">Press Enter to play again · Esc to review the board</p>
@@ -1051,6 +1054,36 @@ async function isRealWord(lang, word){
   return result;
 }
 
+/* ---------------- Word definitions (shown under the reveal when a round ends) ---------------- */
+const defCache = new Map(); // "lang:word" -> definition string | null (unavailable)
+
+// Datamuse defs look like "n\tan implement usually consisting of..." — drop the
+// part-of-speech tag and turn what's left into a clean, capitalized sentence.
+function formatDefinition(raw){
+  const def = (raw.includes("\t") ? raw.split("\t")[1] : raw).trim();
+  if (!def) return "";
+  const capped = def[0].toUpperCase() + def.slice(1);
+  return /[.!?]$/.test(capped) ? capped : capped + ".";
+}
+
+async function fetchDefinition(lang, word){
+  if (!ONLINE_DICT_LANGS.has(lang)) return null; // no reliable online dictionary for this language
+  const cacheKey = lang + ":" + word;
+  if (defCache.has(cacheKey)) return defCache.get(cacheKey);
+  let def = null;
+  try {
+    const res = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&max=1&md=d`);
+    if (res.ok) {
+      const [hit] = await res.json();
+      if (hit && hit.word.toLowerCase() === word && Array.isArray(hit.defs) && hit.defs.length) {
+        def = formatDefinition(hit.defs[0]);
+      }
+    }
+  } catch { /* offline / API hiccup — leave def as null, reveal just shows the word */ }
+  defCache.set(cacheKey, def);
+  return def;
+}
+
 function toggleInputs(disabled){ [...inputsEl.children].forEach(i => i.disabled = disabled); }
 
 /* ---------------- Play ---------------- */
@@ -1130,6 +1163,18 @@ function showOverlay(won){
 
   $("oReveal").innerHTML = [...S.secret]
     .map((c, i) => `<div class="chip" style="animation-delay:${i * 70}ms">${c}</div>`).join("");
+
+  const defEl = $("oDefinition");
+  defEl.textContent = "";
+  defEl.classList.add("hide");
+  if (S.mode === "word"){
+    const word = S.secret, myGen = S.gen;
+    fetchDefinition(S.lang, word).then(def => {
+      if (!def || S.gen !== myGen) return; // stale round (a new game started meanwhile), or no definition found
+      defEl.textContent = def;
+      defEl.classList.remove("hide");
+    });
+  }
 
   $("oStats").innerHTML = `
     <div class="stat"><span>${t("statTries")}</span><b>${n}/${S.max === Infinity ? "∞" : S.max}</b></div>
