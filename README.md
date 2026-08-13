@@ -19,9 +19,10 @@ A secret code is generated and hidden. After each guess you get three counters:
 
 Narrow it down before you run out of tries.
 
-- **Numbers mode** — 3 to 6 digits, repeats allowed (so `1223` is possible).
-- **Words mode** — 3 to 8 letters, secret drawn from a built-in list; guesses must be
-  real words from that list.
+- **Numbers mode** — 3 to 6 digits, repeats allowed (so `1223` is possible). Available in
+  English, French, or Arabic (RTL).
+- **Words mode** — 3 to 8 letters, English only. No built-in word list: both the secret and
+  every guess are checked live against a dictionary API ([Datamuse](https://www.datamuse.com/api/)).
 - **Difficulty** — Easy (15 tries), Normal (10), Hard (7).
 
 Feedback uses standard Mastermind counting, so totals never exceed the real number of

@@ -33,12 +33,15 @@ export class Room {
     const { code, mode, len, lang, hostId, hostName } = body;
     if (!code || !mode || !len || !hostId || !hostName) return json({ error: "missing fields" }, 400);
 
+    const secret = await randomSecret(mode, Number(len), lang || "en");
+    if (!secret) return json({ error: "Could not fetch a word right now — try again in a moment." }, 503);
+
     const room = {
       code,
       mode,
       len: Number(len),
       lang: lang || "en",
-      secret: await randomSecret(mode, Number(len), lang || "en"),
+      secret,
       status: "waiting", // waiting -> playing -> finished
       hostId,
       winnerId: null,
@@ -102,7 +105,9 @@ export class Room {
     }
 
     if (data.type === "rematch" && playerId === room.hostId && room.status === "finished") {
-      room.secret = await randomSecret(room.mode, room.len, room.lang);
+      const secret = await randomSecret(room.mode, room.len, room.lang);
+      if (!secret) return; // dictionary unreachable — leave the room "finished" so the host can just hit rematch again
+      room.secret = secret;
       room.status = "waiting";
       room.winnerId = null;
       room.startedAt = null;
