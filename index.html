@@ -82,17 +82,40 @@
   html,body{height:100%}
   body{
     margin:0;
-    background:
-      radial-gradient(900px 500px at 15% -10%, var(--glow-1) 0%, transparent 60%),
-      radial-gradient(800px 500px at 110% 10%, var(--glow-2) 0%, transparent 55%),
-      var(--bg);
+    background:var(--bg);
     color:var(--text);
     font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-    display:flex;justify-content:center;
-    padding:24px 16px 60px;
     transition:background-color .25s ease,color .25s ease;
   }
-  .app{width:100%;max-width:640px}
+  .shell{display:flex;flex-direction:column;min-height:100vh}
+
+  .app{flex:1;min-width:0;display:flex;justify-content:center;padding:24px 16px calc(88px + env(safe-area-inset-bottom));position:relative}
+  .app::before{
+    content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(900px 500px at 15% -10%, var(--glow-1) 0%, transparent 60%),
+      radial-gradient(800px 500px at 110% 10%, var(--glow-2) 0%, transparent 55%);
+  }
+  .app-inner{width:100%;max-width:640px}
+
+  /* ---- bottom nav bar — Play / Room / Stat, always visible, all viewport sizes ---- */
+  .bottombar{
+    position:fixed;left:0;right:0;bottom:0;z-index:40;
+    display:flex;gap:4px;
+    background:linear-gradient(0deg,var(--panel),var(--panel-2));
+    border-top:1px solid var(--line);
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+    box-shadow:0 -12px 28px -16px rgba(0,0,0,.35);
+  }
+  .side-link{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    border:0;background:transparent;color:var(--muted);
+    padding:8px 4px 7px;border-radius:12px;font-size:11.5px;font-weight:700;
+    cursor:pointer;transition:.15s;
+  }
+  .side-link .side-ic{font-size:18px;line-height:1}
+  .side-link:hover{color:var(--text);background:var(--raise)}
+  .side-link.on{background:linear-gradient(180deg,var(--accent),var(--violet));color:var(--on-accent)}
 
   header{text-align:center;margin-bottom:22px;position:relative}
   h1{
@@ -117,12 +140,6 @@
   html[dir="rtl"] .theme-btn{right:auto;left:0}
   html[dir="rtl"] .menu-btn{left:auto;right:0}
 
-  /* ---- collapsible settings panel ---- */
-  .collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.2,.8,.2,1)}
-  .collapse.open{grid-template-rows:1fr}
-  .collapse-inner{overflow:hidden;min-height:0}
-  @media (prefers-reduced-motion:reduce){ .collapse{transition:none} }
-
   .card{
     background:linear-gradient(180deg,var(--panel),var(--panel-2));
     border:1px solid var(--line);
@@ -130,6 +147,21 @@
     padding:16px;
     margin-bottom:16px;
   }
+
+  /* the settings card gets a subtle gradient outline (echoing the h1 wordmark) so it reads
+     as the one card the whole page revolves around */
+  .settings-card{
+    position:relative;border:1.5px solid transparent;
+    background:
+      linear-gradient(180deg,var(--panel),var(--panel-2)) padding-box,
+      linear-gradient(135deg,var(--accent),var(--violet)) border-box;
+  }
+
+  /* ---- generic collapsible body (grid-rows trick — animatable, unlike max-height) ---- */
+  .collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.2,.8,.2,1)}
+  .collapse.open{grid-template-rows:1fr}
+  .collapse-inner{overflow:hidden;min-height:0}
+  @media (prefers-reduced-motion:reduce){ .collapse{transition:none} }
 
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .row + .row{margin-top:12px}
@@ -140,14 +172,56 @@
     flex:1;border:0;background:transparent;color:var(--muted);
     padding:9px 10px;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;
     transition:.15s;
+    /* flex (not inline text flow) so the ::before badge and the label centre on the same
+       line together — a vertical-align nudge on the badge alone drifts with font metrics */
+    display:flex;align-items:center;justify-content:center;
   }
   .seg button:hover{color:var(--text)}
-  .seg button.on{background:var(--accent);color:var(--on-accent)}
+  .seg button.on{background:var(--accent);color:var(--on-accent);animation:pegPop .28s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes pegPop{0%{transform:scale(.92)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
+  /* small bordered "123" / "A" badges, matching the type of code each mode hides. Live in
+     ::before, not markup — applyLanguage() overwrites these buttons' textContent on every
+     language switch, which would wipe a literal <span> icon */
+  #numbersBtn::before,#wordsBtn::before{
+    display:flex;align-items:center;justify-content:center;flex:none;
+    width:30px;height:21px;margin-inline-end:9px;border-radius:6px;
+    border:1.5px solid currentColor;font-size:10.5px;font-weight:800;opacity:.85;
+  }
+  #numbersBtn::before{content:"123"}
+  #wordsBtn::before{content:"A"}
+  @media (prefers-reduced-motion:reduce){ .seg button.on{animation:none} }
 
   select{
     background:var(--raise);color:var(--text);border:1px solid var(--line);
     border-radius:10px;padding:10px 12px;font-size:14px;cursor:pointer;
   }
+  /* the settings card's own config selects read as soft, rounded "pills" — quieter than
+     the actions beside them, and echoing the .status .pill shape used elsewhere in the app.
+     Tighter padding than a standalone select — this row packs 5 controls, see below. */
+  .settings-card .settings-row select{border-radius:999px;padding:9px 12px}
+  /* language gets a leading globe — the only select whose icon adds real information
+     (which of the 3 languages) rather than just repeating "this is a dropdown" */
+  .field-select{position:relative;flex:none}
+  .field-select::before{
+    content:"🌐";position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);
+    font-size:12px;pointer-events:none;opacity:.85;
+  }
+  .settings-card .settings-row .field-select select{padding-inline-start:30px}
+
+  /* "SETTINGS" label stacks above its controls; the controls themselves never wrap —
+     they scroll horizontally instead, so the row is always exactly one line regardless
+     of viewport width or how long the selected options' text is (fits without scrolling
+     at typical settings/languages; longer combinations — Zen, French, Arabic — scroll).
+     On narrow phones this flips to a clean two-line split instead — see MOBILE below. */
+  .settings-card .settings-row{display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap}
+  .settings-card .settings-controls{
+    display:flex;gap:6px;align-items:center;flex-wrap:nowrap;
+    overflow-x:auto;scroll-behavior:smooth;padding-bottom:2px;
+  }
+  .settings-card .settings-controls::-webkit-scrollbar{height:6px}
+  .settings-card .settings-controls::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+  .settings-card .settings-controls > *{flex:none}
+  .settings-break{display:none}
 
   .btn{
     border:1px solid var(--line);background:var(--raise);color:var(--text);
@@ -158,9 +232,27 @@
   .btn.primary:hover{filter:brightness(1.1);color:var(--on-accent)}
   .btn:disabled{opacity:.45;cursor:not-allowed}
 
+  /* Start/end-round actions sit right alongside the settings selects — visually heavier,
+     so configuration recedes and play advances even in one shared row. */
+  .btn-new,.btn-give{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 13px;font-weight:700}
+  .btn-new{background:linear-gradient(90deg,var(--accent),var(--violet));color:var(--on-accent);border-color:transparent}
+  .btn-new::before{content:"▶";font-size:11px}
+  .btn-new:hover{filter:brightness(1.1);color:var(--on-accent)}
+  .btn-give::before{content:"🚩";font-size:13px}
+  .btn-give:hover{color:var(--red);border-color:var(--red-b)}
+
   .status{display:flex;justify-content:space-between;align-items:center;gap:12px 10px;font-size:14px;flex-wrap:wrap}
-  .status .pill{background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:var(--muted)}
+  .status .pill{
+    display:flex;align-items:center;gap:8px;
+    background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 6px;color:var(--muted);
+  }
   .status .pill b{color:var(--text)}
+  .status .pill .pill-ic{
+    flex:none;width:24px;height:24px;border-radius:50%;font-size:12px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--sunk);border:1px solid var(--line);
+  }
+  html[dir="rtl"] .status .pill{padding:6px 6px 6px 14px}
 
   .inputs{display:flex;gap:var(--cell-gap,8px);justify-content:center;flex-wrap:nowrap;margin:4px 0 14px}
   .cell{
@@ -305,6 +397,10 @@
   .stat span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
   .stat b{font-size:19px}
 
+  .stat-view-title{margin:0 0 4px;font-size:19px;font-weight:800;letter-spacing:-.2px}
+  #statView .stats{justify-content:flex-start}
+  #statView .stat{flex:1;min-width:100px;text-align:center}
+
   .modal .btn{width:100%;padding:13px}
   .modal .hint{margin:12px 0 0;font-size:12px;color:var(--muted)}
 
@@ -319,11 +415,28 @@
     .theme-btn{width:38px;height:38px;font-size:17px;top:0}
     .card{padding:13px;border-radius:12px}
 
-    /* settings row becomes a tidy 2x2 grid instead of ragged free-wrap */
-    .settings-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .settings-row .lbl{grid-column:1 / -1}
-    .settings-row select,.settings-row .btn{width:100%;min-width:0}
+    /* multiplayer's create-room settings row (just 2 selects, no scroll strip) still
+       benefits from a compact 2-column grid on narrow phones. */
+    #mpHome .settings-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    #mpHome .settings-row .lbl{grid-column:1 / -1}
+    #mpHome .settings-row select{width:100%;min-width:0}
     .seg{min-width:0}
+
+    /* single-player card: a horizontal scroll strip is awkward on a phone (the primary
+       "New game" action ends up needing a swipe to reach) — switch to a 2-column grid
+       instead, same idea as #mpHome above. Language + length share a row; Difficulty's
+       label ("Zen — ∞ tries") is the widest so it gets the full row to itself; New game
+       / Give up share the row after. Every row fills edge to edge this way — a wrapping
+       flex row left whichever control didn't fit stranded alone with dead space beside
+       it (the .settings-break spacer no longer does anything here — stays display:none). */
+    .settings-card .settings-controls{
+      display:grid;grid-template-columns:1fr 1fr;gap:8px;
+      overflow-x:visible;
+    }
+    .settings-card .settings-controls > *{width:100%;min-width:0}
+    .settings-card .settings-controls select{width:100%} /* langSel is nested in .field-select, not a direct child — the div stretching isn't enough on its own */
+    .settings-card .settings-controls #diffSel{grid-column:1 / -1}
+    .btn-new,.btn-give{padding:11px 12px;font-size:13.5px}
 
     .status{font-size:13px;gap:8px}
     .status .pill{padding:6px 10px}
@@ -349,19 +462,11 @@
   .mp-modal{position:relative;max-width:100%;margin:0 0 16px}
   /* single-player's board hides while the race screen is showing, so the page
      reads as one view at a time instead of stacking both */
-  body.mp-active #statusCard,
-  body.mp-active #banner,
-  body.mp-active #playCard,
-  body.mp-active #settingsPanel,
-  body.mp-active #menuBtn{display:none}
-  .mp-close{
-    position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    border:1px solid var(--line);background:var(--raise);color:var(--muted);
-    font-size:13px;cursor:pointer;transition:.15s;
-  }
-  .mp-close:hover{color:var(--red);border-color:var(--red-b)}
-  html[dir="rtl"] .mp-close{right:auto;left:14px}
+  body.mp-active #statusCard, body.stat-active #statusCard,
+  body.mp-active #banner, body.stat-active #banner,
+  body.mp-active #playCard, body.stat-active #playCard,
+  body.mp-active #settingsPanel, body.stat-active #settingsPanel,
+  body.mp-active #menuBtn, body.stat-active #menuBtn{display:none}
   .mp-screen h2{margin-top:0}
   .mp-sub{color:var(--muted);font-size:13.5px;line-height:1.5;margin:0 0 16px}
   .mp-name-input{
@@ -412,7 +517,10 @@
 </style>
 </head>
 <body>
-<div class="app">
+<div class="shell">
+
+  <div class="app">
+  <div class="app-inner">
 
   <header>
     <button class="menu-btn" id="menuBtn" title="Game menu" aria-label="Toggle mode &amp; settings menu" aria-expanded="false" aria-controls="settingsPanel">☰</button>
@@ -423,7 +531,7 @@
 
   <div class="collapse" id="settingsPanel">
     <div class="collapse-inner">
-      <div class="card">
+      <div class="card settings-card">
         <div class="row">
           <label class="lbl" id="modeLabel">Mode</label>
           <div class="seg" id="modeSeg">
@@ -433,18 +541,20 @@
         </div>
         <div class="row settings-row">
           <label class="lbl" id="settingsLabel">Settings</label>
-          <select id="langSel" title="Language">
-            <option value="en">English</option>
-            <option value="fr">Français</option>
-            <option value="ar">العربية</option>
-          </select>
-          <select id="lenSel" title="Word length"></select>
-          <select id="diffSel" title="Difficulty"></select>
-          <button class="btn primary" id="newBtn">New game</button>
-          <button class="btn" id="giveBtn">Give up</button>
-        </div>
-        <div class="row">
-          <button class="btn" id="onlineBtn" style="width:100%">🌐 Play online — race a friend</button>
+          <div class="settings-controls">
+            <div class="field-select">
+              <select id="langSel" title="Language">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="ar">العربية</option>
+              </select>
+            </div>
+            <select id="lenSel" title="Word length"></select>
+            <select id="diffSel" title="Difficulty"></select>
+            <div class="settings-break" aria-hidden="true"></div>
+            <button class="btn btn-new" id="newBtn">New game</button>
+            <button class="btn btn-give" id="giveBtn">Give up</button>
+          </div>
         </div>
         <div class="row">
           <button class="btn hide" id="installBtn" type="button" style="width:100%">⬇️ Install app</button>
@@ -455,8 +565,8 @@
 
   <div class="card" id="statusCard">
     <div class="status">
-      <div class="pill"><span id="triesLeftLabel">Tries left</span> <b id="left">10</b></div>
-      <div class="pill" id="modePill">4 digits · repeats allowed</div>
+      <div class="pill"><span class="pill-ic" aria-hidden="true">🎯</span><span id="triesLeftLabel">Tries left</span> <b id="left">10</b></div>
+      <div class="pill"><span class="pill-ic" aria-hidden="true">🛡</span><span id="modePill">4 digits · repeats allowed</span></div>
     </div>
   </div>
 
@@ -478,10 +588,17 @@
     <div class="msg" id="msg"></div>
   </div>
 
+  <!-- Session stats — a third sidebar section, shown in place of the board like the
+       multiplayer room below. Persisted in localStorage (see saveSettings()). -->
+  <div class="card hide" id="statView">
+    <h2 class="stat-view-title" id="statViewTitle">Your stats</h2>
+    <p class="mp-sub" id="statViewHint">Tracked on this device.</p>
+    <div class="stats" id="statTiles"></div>
+  </div>
+
   <!-- Multiplayer race: an inline section of the page (not a popup) — shown in place of
        the single-player board while active, so it reads as its own page, not a dialog. -->
   <div class="modal mp-modal hide" id="mpOverlay">
-    <button class="mp-close" id="mpCloseBtn" type="button" aria-label="Back to game" title="Back to game">✕</button>
 
     <!-- Sign up: pick a name, get a permanent device-local player id -->
     <div class="mp-screen" id="mpAuth">
@@ -534,17 +651,22 @@
     <!-- Race: same code, everyone guesses at once, first exact match wins -->
     <div class="mp-screen hide" id="mpRace">
       <div class="status">
-        <div class="pill" id="mpRaceModePill"></div>
-        <div class="pill"><span>Your tries</span> <b id="mpMyAttempts">0</b></div>
+        <div class="pill"><span class="pill-ic" aria-hidden="true">🛡</span><span id="mpRaceModePill"></span></div>
+        <div class="pill"><span class="pill-ic" aria-hidden="true">🎯</span><span id="mpTriesLabel">Your tries</span> <b id="mpMyAttempts">0</b></div>
       </div>
       <div class="mp-players" id="mpRacePlayers"></div>
       <div class="divider"></div>
+      <div class="legend">
+        <span><i class="dot g"></i> <span id="mpLegendExact">right &amp; in place</span></span>
+        <span><i class="dot a"></i> <span id="mpLegendPartial">right, wrong place</span></span>
+        <span><i class="dot r"></i> <span id="mpLegendWrong">not in the code</span></span>
+      </div>
       <div class="history" id="mpHistory"><div class="empty">No guesses yet.</div></div>
       <div class="divider"></div>
       <div class="inputs" id="mpInputs"></div>
       <div class="msg" id="mpMsg"></div>
       <div class="row" style="margin-top:10px">
-        <button class="btn" id="mpGiveUpBtn" type="button" style="flex:1">Give up</button>
+        <button class="btn btn-give" id="mpGiveUpBtn" type="button" style="flex:1">Give up</button>
         <button class="btn" id="mpLeaveRaceBtn" type="button" style="flex:1">Leave race</button>
       </div>
     </div>
@@ -564,8 +686,23 @@
 
   <footer id="footer">
     Type to auto-advance · Backspace to go back · Enter to check<br>
-    Word guesses must be real words from the built-in list.
+    Word guesses are checked against a dictionary.
   </footer>
+
+  </div>
+  </div>
+
+  <nav class="bottombar" id="bottomBar" aria-label="Sections">
+    <button class="side-link on" data-view="play" id="navPlay" type="button" aria-current="page">
+      <span class="side-ic" aria-hidden="true">▶</span><span id="navPlayText">Play</span>
+    </button>
+    <button class="side-link" data-view="room" id="navRoom" type="button">
+      <span class="side-ic" aria-hidden="true">👥</span><span id="navRoomText">Room</span>
+    </button>
+    <button class="side-link" data-view="stat" id="navStat" type="button">
+      <span class="side-ic" aria-hidden="true">📊</span><span id="navStatText">Stat</span>
+    </button>
+  </nav>
 </div>
 
 <canvas id="fx" class="hide"></canvas>
@@ -584,75 +721,39 @@
 </div>
 
 <script>
-/* ---------------- Word lists (3–8 letters), per language ---------------- */
-const WORDS_BY_LANG = {
-en: {
-3:["cat","dog","sun","map","key","ice","jam","owl","fox","bat","pen","cup","box","net","web","sky","arm","bed","leg","ear","car","bus","toy","zip","gum","log","fan","rat","hat","pot","tip","win","war","oak","elk","nut","oil","pie","ray","sea","top","vet","yak","zoo","bag","bee","cow","den","egg","fig","gas","hen","ink","jar","kit","lip","mud","nap","paw","rug","ski","tag","urn","van","wax","bow","cab","dam","fun","gap","hut","jet","lab","mix","nod","pig","rib","sap","tan","cut","dry","eye","few","air"],
-4:["bird","tree","lamp","fish","gold","rain","moon","star","wolf","frog","king","milk","road","ship","snow","wind","book","cake","door","fire","game","hand","iron","jump","kite","leaf","mind","note","open","page","quiz","ring","salt","time","unit","vase","wave","yard","zone","bell","corn","dust","echo","farm","gate","hill","idea","jazz","knot","lake","maze","nest","oval","palm","quit","rock","sand","tide","user","void","wall","yarn","zero","bath","clay","desk","east","flag","glow","herb","inch","jail","keen","lion","mask","nine","oven","pond","rope","seed","tent","volt","wing"],
-5:["apple","brave","cloud","dance","eagle","flame","grape","house","input","jelly","knife","lemon","mango","noble","ocean","piano","queen","river","stone","tiger","urban","vivid","water","xenon","yield","zebra","actor","beach","chair","dream","earth","frost","glass","heart","index","joker","koala","light","music","north","olive","pearl","quiet","robot","smile","train","under","valve","wheat","youth","amber","bloom","crane","depth","ember","fable","giant","honey","ivory","joint","kneel","laser","metal","night","onion","plant","quest","rhyme","spark","torch","ultra","vapor","witty","yacht","angle","blaze","curve","donut","fresh","globe","hotel","input"],
-6:["animal","branch","candle","desert","engine","flower","garden","hammer","island","jacket","kettle","ladder","magnet","nature","orange","pencil","quiver","rocket","silver","turtle","umpire","valley","window","yellow","zigzag","artist","bridge","circle","dragon","empire","forest","gravel","harbor","insect","jungle","knight","lizard","market","napkin","office","planet","quartz","ribbon","summer","tunnel","unique","velvet","walnut","anchor","basket","copper","dinner","effort","fabric","guitar","helmet","injury","junior","kidney","puzzle","mirror","nickel","oxygen","parrot","quaint","rescue","saddle","temple","unfold","vacuum","winter","yogurt","bamboo","cactus","damage","escape","fossil","gopher","hunter","indigo"],
-7:["balloon","captain","diamond","evening","factory","gateway","harvest","imagine","journey","kitchen","library","monster","network","october","package","quality","rainbow","scatter","teacher","uniform","village","weather","younger","zealous","academy","bicycle","cabinet","dolphin","eclipse","freedom","gallery","holiday","insider","justice","keeping","lantern","machine","natural","organic","painter","quarter","respect","silence","tornado","upgrade","volcano","warrior","yielded","amazing","blanket","comfort","default","element","fantasy","granite","husband","iceberg","jasmine","kingdom","liberty","mystery","noodles","october","pyramid","quicken","routine","stadium","triumph","unicorn","venture","whisper"],
-8:["airplane","birthday","computer","dinosaur","elephant","festival","greeting","hospital","interior","junction","keyboard","language","mountain","notebook","observer","painting","question","reminder","sandwich","triangle","umbrella","vacation","watchdog","yearbook","absolute","backpack","campaign","daylight","envelope","flamingo","gorgeous","handbook","identity","jealousy","kindness","lavender","magnetic","nautical","obstacle","parallel","quantity","resource","strength","together","universe","vertical","wildlife","yielding","argument","blizzard","chemical","diagonal","exercise","farewell","gasoline","headline","increase","juvenile","knuckles","lifetime","material","negative","official","platform","quotient","received","seasonal","tropical"]
-},
-fr: {
-3:["coq","oie","rat","âne","œuf","riz","ail","blé","sel","thé","jus","eau","vin","œil","nez","cou","dos","mur","sol","lit","sac","clé","lac","mer","île","feu","ami","roi","bus","bas","nid","été","art","mot","bol","pot","car","ski","gaz","axe","épi","roc","duc","pré","cri","vue","pie","vis","air","bec","dur","ton","nom"],
-4:["chat","ours","loup","cerf","lion","paon","mule","bouc","veau","pain","lait","chou","maïs","café","soda","tête","yeux","dent","bras","main","pied","cœur","foie","peau","sang","toit","lune","ciel","vent","père","mère","sœur","fils","mari","amie","bébé","dame","bleu","vert","rose","noir","gris","juge","jour","nuit","soir","mois","pays","pont","tour","gare","vélo","moto","gros","long","haut","lent","fort","beau","joli","laid","sale"],
-5:["chien","vache","poule","lapin","biche","tigre","singe","zèbre","crabe","guêpe","aigle","hibou","cygne","koala","panda","hyène","chiot","pâtes","soupe","fruit","pomme","poire","pêche","prune","melon","sucre","huile","tarte","glace","bière","front","coude","doigt","ongle","jambe","genou","porte","salon","table","tapis","lampe","livre","stylo","nuage","pluie","neige","orage","forêt","arbre","fleur","herbe","océan","plage","sable","roche","terre","fumée","frère","fille","oncle","tante","femme","homme","rouge","jaune","blanc","beige","élève","marin","reine","temps","matin","année","heure","ville","route","école","avion","train","grand","petit","mince","court","large","chaud","froid","jeune","vieux","riche","calme"],
-6:["cheval","cochon","mouton","chèvre","canard","souris","renard","girafe","tortue","requin","homard","fourmi","mouche","oiseau","pigeon","chacal","agneau","chaton","beurre","viande","salade","légume","banane","orange","citron","fraise","cerise","raisin","ananas","mangue","tomate","oignon","laitue","poivre","farine","gâteau","bonbon","bouche","langue","épaule","ventre","hanche","orteil","poumon","muscle","maison","jardin","garage","chaise","tiroir","rideau","miroir","crayon","papier","cahier","soleil","étoile","éclair","vallée","fleuve","pierre","désert","cousin","enfant","garçon","violet","marron","avocat","acteur","pilote","soldat","prince","minute","chemin","église","marché","banque","bateau","camion","étroit","rapide","faible","ancien","propre","facile","pauvre","triste","joyeux"],
-7:["serpent","poisson","baleine","dauphin","pieuvre","abeille","corbeau","moineau","gorille","léopard","guépard","chameau","poulain","fromage","abricot","carotte","poivron","épinard","haricot","biscuit","cheveux","oreille","estomac","cerveau","fenêtre","plafond","chambre","cuisine","armoire","horloge","colline","feuille","rivière","cousine","docteur","médecin","pompier","boucher","pêcheur","fermier","artiste","peintre","danseur","semaine","seconde","château","hôpital","magasin","voiture","nouveau","heureux"],
-8:["éléphant","papillon","araignée","escargot","chouette","pingouin","autruche","pastèque","vinaigre","chocolat","poitrine","escalier","tonnerre","montagne","dentiste","policier","étudiant","musicien","chanteur","écrivain","aéroport"]
-},
-ar: {
-3:["قطة","كلب","بطة","فأر","جرذ","ذئب","أسد","نمر","فيل","قرد","حوت","قرش","نسر","فهد","ضبع","جمل","بغل","تيس","حمل","عجل","مهر","هرة","جرو","طير","سمك","بقر","خبز","جبن","بيض","لحم","أرز","موز","كرز","عنب","خوخ","جزر","بصل","ثوم","ذرة","قمح","سكر","ملح","زيت","شاي","ماء","عسل","رأس","شعر","عين","أنف","أذن","كتف","ظفر","صدر","ظهر","بطن","خصر","ساق","قدم","قلب","رئة","كبد","جلد","عظم","باب","سقف","سلم","قلم","شمس","قمر","مطر","ثلج","ريح","رعد","برق","جبل","عشب","نهر","بحر","رمل","حجر","نار","أخت","ابن","عمة","خال","زوج","طفل","رجل","ولد","بنت","بني","ملك","وقت","يوم","ليل","شهر","سنة","بلد","جسر","برج","قصر","سوق","بنك","سجن","جيش"],
-4:["حصان","بقرة","خروف","ماعز","أرنب","ثعلب","ضفدع","سمكة","نحلة","دبور","نملة","دودة","طائر","بومة","غراب","بجعة","كنغر","حمار","حليب","زبدة","حساء","سلطة","خضار","تفاح","مشمش","شمام","بطيخ","فلفل","كوسة","كرنب","دقيق","كعكة","حلوى","قهوة","عصير","نبيذ","جبهة","لسان","رقبة","ذراع","مرفق","إصبع","ركبة","معدة","دماغ","عضلة","منزل","جدار","غرفة","مطبخ","حمام","كراج","كرسي","سرير","مرآة","ساعة","هاتف","كتاب","ورقة","دفتر","نجمة","سماء","وادي","غابة","شجرة","زهرة","محيط","شاطئ","صخرة","تراب","جليد","دخان","ابنة","خالة","زوجة","صديق","أحمر","أزرق","أخضر","أصفر","وردي","أسود","أبيض","طبيب","ممرض","معلم","طالب","قاضي","شرطي","جندي","طباخ","خباز","جزار","صياد","فلاح","فنان","رسام","مغني","راقص","ممثل","كاتب","صحفي","طيار","بحار","ملكة","أمير","صباح","مساء","طريق","مسجد","متجر","محطة","مطار","قطار","مطعم","فندق","متحف","مكتب","شركة","مصنع","رئيس","وزير","شرطة","سلام","حرية","ماضي","حاضر","شبكة"],
-5:["خنزير","دجاجة","زرافة","تمساح","ثعبان","فراشة","ذبابة","بعوضة","حلزون","حمامة","عصفور","طاووس","ببغاء","بطريق","نعامة","باندا","فاكهة","كمثرى","ليمون","مانجو","طماطم","بطاطا","سبانخ","فطيرة","نافذة","أرضية","حديقة","طاولة","خزانة","سجادة","ستارة","مصباح","حاسوب","حقيبة","مفتاح","سحابة","عاصفة","بحيرة","جزيرة","صحراء","امرأة","رمادي","محامي","مهندس","أميرة","أسبوع","دقيقة","مدينة","كنيسة","مدرسة","سفينة","طائرة","سيارة","دراجة","جامعة","مكتبة","تلفاز","برمجة","تاريخ","أحياء","فلسفة","سياسة","حكومة","دستور","قانون","محكمة","معركة","هزيمة","عدالة","تطبيق"],
-6:["سلحفاة","دولفين","عنكبوت","غوريلا","برتقال","فراولة","أناناس","بسكويت","مثلجات","بنفسجي","موسيقي","مستشفى","صيدلية","فيزياء","كيمياء","اقتصاد","برلمان","انتصار","مساواة","مستقبل","برنامج"],
-7:["معكرونة","باذنجان","تلفزيون","برتقالي","رياضيات","جغرافيا","استقلال","مسؤولية","معلومات","مواصلات","اتصالات","مواطنون","مسؤولون","مهندسون"],
-8:["فاصولياء","شوكولاتة","مستشفيات","انتخابات","اجتماعات","اقتصادية","اجتماعية"]
-}
-};
-// per-language allowed letters, used both to sanitize the built-in lists and to filter keystrokes
-const LETTER_REGEX = {
-  en: /^[a-z]+$/,
-  fr: /^[a-zàâäéèêëïîôöùûüÿçœæ]+$/,
-  ar: /^[ء-ي]+$/
-};
-// sanitize: keep only words of the exact length, unique, lowercase, made of that language's letters
-for (const lang of Object.keys(WORDS_BY_LANG)) {
-  const words = WORDS_BY_LANG[lang];
-  for (const k of Object.keys(words)) {
-    const n = +k;
-    words[k] = [...new Set(words[k].map(w => w.toLowerCase()))].filter(w => w.length === n && LETTER_REGEX[lang].test(w));
-  }
-}
-const WORD_SETS_BY_LANG = Object.fromEntries(Object.entries(WORDS_BY_LANG)
-  .map(([lang, words]) => [lang, Object.fromEntries(Object.entries(words).map(([k,v]) => [k, new Set(v)]))]));
-// languages with a reliable live dictionary lookup (see isRealWord below) — fr/ar were
-// tested against dictionaryapi.dev and got inconsistent 404/502s even for common words,
-// so those stay list-only for now
-const ONLINE_DICT_LANGS = new Set(["en"]);
+/* ---------------- Word mode ----------------
+   No built-in word list: every secret and every guess is checked live against
+   Datamuse. Word mode is English-only — fr/ar don't have a free dictionary API
+   reliable enough to back this (tested against dictionaryapi.dev and Datamuse both;
+   inconsistent 404/502s even for common words), so those languages stay Numbers-only.
+   See WORD_MODE_LANG below and worker/src/game-core.js for the multiplayer mirror. */
+const WORD_MODE_LANG = "en";
+const WORD_LENGTHS = [3, 4, 5, 6, 7, 8];
+const WORD_REGEX = /^[a-z]+$/; // only plain a–z entries count — Datamuse's corpus includes phrases, hyphenations, etc.
 
-// Real dictionary words fetched from Datamuse, cached per "lang:len" so randomSecret() can
-// draw from way more than the curated list. Fetches happen in the background and the browser
-// keeps them running even after the triggering call returns, so this never blocks starting a
-// new game: the very first word round of a given length falls back to the curated list while
-// the pool warms up, then every later round at that length picks from up to ~1000 real words.
-// Mirrors the pool in worker/src/game-core.js (server-side, for multiplayer).
+// Real dictionary words fetched from Datamuse, cached per "lang:len" so repeat rounds at the
+// same length are instant. Only a *successful* (non-empty) fetch is cached — an offline blip
+// or API hiccup returns an empty pool but isn't remembered, so the next round just retries.
 const wordPoolCache = new Map();
-function warmWordPool(lang, len){
+const wordPoolInflight = new Map(); // in-flight fetches, so concurrent calls share one request
+function getWordPool(lang, len){
   const key = lang + ":" + len;
-  if (wordPoolCache.has(key)) return; // already cached, or a fetch is already in flight
-  wordPoolCache.set(key, []); // placeholder so we don't fire duplicate fetches
+  if (wordPoolCache.has(key)) return Promise.resolve(wordPoolCache.get(key));
+  if (wordPoolInflight.has(key)) return wordPoolInflight.get(key);
   const pattern = encodeURIComponent("?".repeat(len)); // Datamuse "spelled like": ? = any one letter
-  fetch(`https://api.datamuse.com/words?sp=${pattern}&max=1000&md=d`)
+  const p = fetch(`https://api.datamuse.com/words?sp=${pattern}&max=1000&md=d`)
     .then(res => res.ok ? res.json() : [])
-    .then(hits => {
-      const words = hits
-        .filter(h => h.word.length === len && LETTER_REGEX[lang].test(h.word) && Array.isArray(h.defs) && h.defs.length > 0)
-        .map(h => h.word);
-      wordPoolCache.set(key, [...new Set(words)]);
-    })
-    .catch(() => {}); // offline / API hiccup — leave the placeholder empty, curated list keeps working
+    .then(hits => [...new Set(hits
+      .filter(h => h.word.length === len && WORD_REGEX.test(h.word) && Array.isArray(h.defs) && h.defs.length > 0)
+      .map(h => h.word))])
+    .catch(() => []) // offline / API hiccup
+    .then(words => {
+      wordPoolInflight.delete(key);
+      if (words.length) wordPoolCache.set(key, words);
+      return words;
+    });
+  wordPoolInflight.set(key, p);
+  return p;
 }
 
 /* ---------------- Core scoring (Mastermind rules) ---------------- */
@@ -669,7 +770,7 @@ function score(secret, guess){
   for (const ch in gc) if (sc[ch]) partial += Math.min(sc[ch], gc[ch]);
   return { exact, partial, wrong: n - exact - partial };
 }
-if (typeof module !== "undefined") module.exports = { score, WORDS: WORDS_BY_LANG.en, WORDS_BY_LANG };
+if (typeof module !== "undefined") module.exports = { score };
 
 /* ---------------- Translations ---------------- */
 const I18N = {
@@ -678,6 +779,8 @@ en: {
   subtitle: "Crack the hidden code — numbers or words.",
   menuTitle: "Game menu", menuAria: "Toggle mode & settings menu",
   themeToLight: "Switch to light mode", themeToDark: "Switch to dark mode", themeAria: "Switch colour theme",
+  navPlay: "Play", navRoom: "Room", navStat: "Stat",
+  statViewTitle: "Your stats", statViewHint: "Tracked on this device.",
   modeLabel: "Mode", numbersBtn: "Numbers", wordsBtn: "Words", settingsLabel: "Settings", langLabel: "Language",
   diffEasy: "Easy", diffNormal: "Normal", diffHard: "Hard", diffZen: "Zen",
   newGameBtn: "New game", giveUpBtn: "Give up",
@@ -691,11 +794,12 @@ en: {
   checkingWord: "Checking word…",
   notRealWord: w => `"${w}" isn't a real word.`,
   cantVerify: "Couldn't verify that word — check your connection and try again.",
+  loadingWords: "Loading words…",
+  dictUnavailable: "Couldn't reach the dictionary. Check your connection and try New game again.",
   crackedIn: (n, tw) => `Cracked it in ${n} ${tw}!`,
   outOfTries: "Out of tries — the code was:",
   digitsSuffix: n => `${n} digits · repeats allowed`,
   wordSuffix: n => `${n}-letter word · any real word accepted`,
-  wordSuffixList: n => `${n}-letter word · built-in list`,
   lenDigits: n => `${n} digits`, lenLetters: n => `${n} letters`,
   ranks: [
     [1, "Unbelievable!", "First try. That was pure magic."],
@@ -719,6 +823,8 @@ fr: {
   subtitle: "Devinez le code caché — chiffres ou mots.",
   menuTitle: "Menu du jeu", menuAria: "Afficher ou masquer le mode et les paramètres",
   themeToLight: "Passer au thème clair", themeToDark: "Passer au thème sombre", themeAria: "Changer de thème",
+  navPlay: "Jouer", navRoom: "Salon", navStat: "Stats",
+  statViewTitle: "Vos statistiques", statViewHint: "Suivies sur cet appareil.",
   modeLabel: "Mode", numbersBtn: "Chiffres", wordsBtn: "Mots", settingsLabel: "Paramètres", langLabel: "Langue",
   diffEasy: "Facile", diffNormal: "Normal", diffHard: "Difficile", diffZen: "Zen",
   newGameBtn: "Nouvelle partie", giveUpBtn: "Abandonner",
@@ -726,17 +832,18 @@ fr: {
   legendExact: "bien placé", legendPartial: "mal placé", legendWrong: "absent du code",
   emptyHistory: "Aucun essai pour l'instant. Commencez à taper ci-dessous.",
   footerHint1: "Tapez pour avancer · Retour arrière pour reculer · Entrée pour valider",
-  footerWordHint: "Les mots doivent provenir de la liste intégrée.",
+  footerWordHint: "Le mode Mots n'est disponible qu'en anglais, avec un dictionnaire en ligne.",
   fillBoxes: n => `Remplissez les ${n} cases.`,
   alreadyTried: "Vous avez déjà essayé ce mot.",
   checkingWord: "Vérification du mot…",
   notRealWord: w => `« ${w} » n'est pas un mot valide.`,
   cantVerify: "Impossible de vérifier ce mot — vérifiez votre connexion et réessayez.",
+  loadingWords: "Chargement des mots…",
+  dictUnavailable: "Impossible de joindre le dictionnaire. Vérifiez votre connexion et relancez une partie.",
   crackedIn: (n, tw) => `Trouvé en ${n} ${tw} !`,
   outOfTries: "Essais épuisés — le code était :",
   digitsSuffix: n => `${n} chiffres · répétitions autorisées`,
-  wordSuffix: n => `Mot de ${n} lettres · liste intégrée`,
-  wordSuffixList: n => `Mot de ${n} lettres · liste intégrée`,
+  wordSuffix: n => `Mot de ${n} lettres · n'importe quel mot réel accepté`,
   lenDigits: n => `${n} chiffres`, lenLetters: n => `${n} lettres`,
   ranks: [
     [1, "Incroyable !", "Du premier coup. C'était de la magie pure."],
@@ -760,6 +867,8 @@ ar: {
   subtitle: "اكتشف الشيفرة الخفية — أرقام أو كلمات.",
   menuTitle: "قائمة اللعبة", menuAria: "إظهار أو إخفاء الوضع والإعدادات",
   themeToLight: "التبديل إلى الوضع الفاتح", themeToDark: "التبديل إلى الوضع الداكن", themeAria: "تغيير المظهر",
+  navPlay: "لعب", navRoom: "غرفة", navStat: "إحصاء",
+  statViewTitle: "إحصائياتك", statViewHint: "محفوظة على هذا الجهاز.",
   modeLabel: "الوضع", numbersBtn: "أرقام", wordsBtn: "كلمات", settingsLabel: "الإعدادات", langLabel: "اللغة",
   diffEasy: "سهل", diffNormal: "عادي", diffHard: "صعب", diffZen: "بلا حدود",
   newGameBtn: "لعبة جديدة", giveUpBtn: "استسلام",
@@ -767,17 +876,18 @@ ar: {
   legendExact: "صحيح ومكانه صحيح", legendPartial: "صحيح، لكن مكانه خطأ", legendWrong: "غير موجود في الشيفرة",
   emptyHistory: "لا توجد محاولات بعد. ابدأ الكتابة أدناه.",
   footerHint1: "اكتب للانتقال تلقائيًا · مسافة للخلف للرجوع · Enter للتحقق",
-  footerWordHint: "يجب أن تكون الكلمات من القائمة المدمجة.",
+  footerWordHint: "وضع الكلمات متاح بالإنجليزية فقط، عبر قاموس إلكتروني مباشر.",
   fillBoxes: n => `املأ الخانات الـ${n}.`,
   alreadyTried: "لقد جربت هذه الكلمة من قبل.",
   checkingWord: "جارٍ التحقق من الكلمة…",
   notRealWord: w => `"${w}" ليست كلمة صحيحة.`,
   cantVerify: "تعذّر التحقق من هذه الكلمة — تحقق من اتصالك وحاول مرة أخرى.",
+  loadingWords: "جارٍ تحميل الكلمات…",
+  dictUnavailable: "تعذّر الوصول إلى القاموس. تحقق من اتصالك وابدأ لعبة جديدة.",
   crackedIn: (n, tw) => `اكتشفتها خلال ${n} ${tw}!`,
   outOfTries: "نفدت المحاولات — كانت الشيفرة:",
   digitsSuffix: n => `${n} أرقام · التكرار مسموح`,
-  wordSuffix: n => `كلمة من ${n} أحرف · من القائمة المدمجة`,
-  wordSuffixList: n => `كلمة من ${n} أحرف · من القائمة المدمجة`,
+  wordSuffix: n => `كلمة من ${n} أحرف · أي كلمة حقيقية مقبولة`,
   lenDigits: n => `${n} أرقام`, lenLetters: n => `${n} أحرف`,
   ranks: [
     [1, "لا يُصدَّق!", "من أول محاولة. كان ذلك سحرًا خالصًا."],
@@ -813,13 +923,19 @@ const inputsEl = $("inputs"), histEl = $("history"), msgEl = $("msg"),
       lenSel = $("lenSel"), diffSel = $("diffSel"), langSel = $("langSel");
 
 function buildLenOptions(){
-  const words = WORDS_BY_LANG[S.lang];
   const opts = S.mode === "num"
     ? [3,4,5,6].map(n => [n, t("lenDigits", n)])
-    : Object.keys(words).map(Number).sort((a,b)=>a-b).map(n => [n, t("lenLetters", n)]);
+    : WORD_LENGTHS.map(n => [n, t("lenLetters", n)]);
   lenSel.innerHTML = opts.map(([v,label]) => `<option value="${v}">${label}</option>`).join("");
   const want = opts.some(o => o[0] === S.len) ? S.len : (S.mode === "num" ? 4 : 5);
   S.len = want; lenSel.value = String(want);
+}
+
+// word mode has no built-in list, so it's only available in WORD_MODE_LANG — disable the
+// other language options while in word mode and fall back to WORD_MODE_LANG if needed
+function syncLangAvailability(){
+  const wordOnly = S.mode === "word";
+  [...langSel.options].forEach(o => { o.disabled = wordOnly && o.value !== WORD_MODE_LANG; });
 }
 
 function buildDiffOptions(){
@@ -834,41 +950,62 @@ function buildDiffOptions(){
   diffSel.value = [...diffSel.options].some(o => o.value === cur) ? cur : "10";
 }
 
-function randomSecret(){
-  if (S.mode === "num"){
-    let s = "";
-    for (let i = 0; i < S.len; i++) s += Math.floor(Math.random() * 10);
-    return s;
-  }
-  if (ONLINE_DICT_LANGS.has(S.lang)){
-    warmWordPool(S.lang, S.len); // kick off (or keep) the fetch so next round has a bigger pool
-    const onlinePool = wordPoolCache.get(S.lang + ":" + S.len);
-    if (onlinePool && onlinePool.length) return onlinePool[Math.floor(Math.random() * onlinePool.length)];
-  }
-  const list = WORDS_BY_LANG[S.lang][S.len];
-  return list[Math.floor(Math.random() * list.length)];
+function randomNumberSecret(){
+  let s = "";
+  for (let i = 0; i < S.len; i++) s += Math.floor(Math.random() * 10);
+  return s;
+}
+async function randomWordSecret(lang, len){
+  const pool = await getWordPool(lang, len);
+  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
 }
 
-function newGame(){
+async function newGame(){
   S.max = +diffSel.value;
   S.len = +lenSel.value;
   saveSettings(); // remember mode/language/length/difficulty for next visit
-  S.gen++; // invalidates any in-flight word check from a previous round
-  S.secret = randomSecret();
+  S.gen++; // invalidates any in-flight word lookup from a previous round
+  const myGen = S.gen;
   S.guesses = [];
   S.over = false;
-  S.checking = false;
   S.redChars.clear(); // fresh round, fresh deductions
   bannerEl.className = "banner hide";
   bannerEl.textContent = "";
   closeOverlay();
-  modePill.textContent = S.mode === "num"
-    ? t("digitsSuffix", S.len)
-    : (ONLINE_DICT_LANGS.has(S.lang) ? t("wordSuffix", S.len) : t("wordSuffixList", S.len));
-  renderInputs();
-  toggleInputs(false); // re-enable in case the previous round ended the game
   renderHistory();
   updateLeft();
+  renderInputs();
+
+  if (S.mode === "num"){
+    S.checking = false;
+    S.secret = randomNumberSecret();
+    modePill.textContent = t("digitsSuffix", S.len);
+    toggleInputs(false); // re-enable in case the previous round ended the game
+    setMsg("");
+    return;
+  }
+
+  // Word mode: the secret comes from a live dictionary lookup (see getWordPool above), so
+  // the very first round at a given length has to wait on the network; every later round at
+  // that length reuses the cached pool and resolves instantly. S.checking doubles as the
+  // "round not ready yet" guard here — same flag submit() uses while verifying a guess — so
+  // typing/Enter stay locked out until a secret is ready (see the keydown handler below).
+  modePill.textContent = t("wordSuffix", S.len);
+  S.secret = "";
+  S.checking = true;
+  toggleInputs(true);
+  setMsg(t("loadingWords"));
+  const secret = await randomWordSecret(S.lang, S.len);
+  if (S.gen !== myGen) return; // superseded by a newer round already — that round owns the UI now
+  S.checking = false;
+  if (!secret){
+    S.over = true; // no active round to play — Enter now retries via newGame() instead of submit()
+    setMsg(t("dictUnavailable"), "err");
+    return;
+  }
+  S.secret = secret;
+  toggleInputs(false);
+  inputsEl.children[0]?.focus();
   setMsg("");
 }
 
@@ -901,14 +1038,10 @@ function sizeCells(){
 }
 addEventListener("resize", () => sizeCells());
 
-// single valid letter for the current language (Arabic has no case; en/fr match either case)
-function letterRegex(){
-  return S.lang === "ar" ? /^[ء-ي]$/ : S.lang === "fr" ? /^[a-zàâäéèêëïîôöùûüÿçœæ]$/i : /^[a-zA-Z]$/;
-}
+// single valid letter for word mode (English only — see WORD_MODE_LANG above)
+const WORD_CHAR_REGEX = /^[a-zA-Z]$/;
 // global version, for stripping non-letters out of pasted text
-function letterStripRegex(){
-  return S.lang === "ar" ? /[^ء-ي]/g : S.lang === "fr" ? /[^a-zàâäéèêëïîôöùûüÿçœæ]/gi : /[^a-zA-Z]/g;
-}
+const WORD_STRIP_REGEX = /[^a-zA-Z]/g;
 
 // Clicking any box — a live input cell or a chip in history — cycles its colour mark:
 // green → amber → red → … Green/amber are LOCAL to that one box (each position is its
@@ -982,7 +1115,7 @@ function renderInputs(){
     inp.spellcheck = false;
     if (S.mode === "num"){ inp.inputMode = "numeric"; inp.pattern = "[0-9]"; }
     inp.addEventListener("input", () => {
-      const ok = S.mode === "num" ? /^[0-9]$/ : letterRegex();
+      const ok = S.mode === "num" ? /^[0-9]$/ : WORD_CHAR_REGEX;
       inp.value = ok.test(inp.value) ? inp.value.toUpperCase() : "";
       delete inp.dataset.localMark; // fresh character typed in — starts unmarked
       if (inp.value) paintBox(inp, inp.value.toLowerCase(), ""); else inp.classList.remove(...MARK_CLASSES);
@@ -1001,7 +1134,7 @@ function renderInputs(){
     inp.addEventListener("paste", e => {
       e.preventDefault();
       const raw = (e.clipboardData.getData("text") || "").trim();
-      const clean = (S.mode === "num" ? raw.replace(/\D/g,"") : raw.replace(letterStripRegex(),"")).toUpperCase();
+      const clean = (S.mode === "num" ? raw.replace(/\D/g,"") : raw.replace(WORD_STRIP_REGEX,"")).toUpperCase();
       for (let k = 0; k + i < S.len && k < clean.length; k++){
         const cell = inputsEl.children[i+k];
         cell.value = clean[k];
@@ -1027,12 +1160,10 @@ function clearInputs(){
   inputsEl.children[0].focus();
 }
 
-/* ---------------- Word lookup (any real word, not just the built-in list) ---------------- */
+/* ---------------- Word lookup (any real word, verified live — see WORD_MODE_LANG above) ---------------- */
 const dictCache = new Map(); // "lang:word" -> true | false | undefined(unverifiable)
 
 async function isRealWord(lang, word){
-  if (WORD_SETS_BY_LANG[lang]?.[word.length]?.has(word)) return true; // curated list always counts, no roundtrip needed
-  if (!ONLINE_DICT_LANGS.has(lang)) return false; // no reliable online dictionary for this language — curated list is authoritative
   const cacheKey = lang + ":" + word;
   if (dictCache.has(cacheKey)) return dictCache.get(cacheKey);
   let result;
@@ -1067,7 +1198,6 @@ function formatDefinition(raw){
 }
 
 async function fetchDefinition(lang, word){
-  if (!ONLINE_DICT_LANGS.has(lang)) return null; // no reliable online dictionary for this language
   const cacheKey = lang + ":" + word;
   if (defCache.has(cacheKey)) return defCache.get(cacheKey);
   let def = null;
@@ -1094,22 +1224,15 @@ async function submit(){
   if (S.guesses.some(x => x.guess === g)) return setMsg(t("alreadyTried"), "err");
 
   if (S.mode === "word"){
-    // only languages with a live dictionary API need a network round trip; list-only
-    // languages (or a word already in the curated list) resolve instantly
-    const needsCheck = ONLINE_DICT_LANGS.has(S.lang) && !WORD_SETS_BY_LANG[S.lang]?.[S.len]?.has(g);
     const myGen = S.gen, myLang = S.lang;
-    if (needsCheck){
-      S.checking = true;
-      toggleInputs(true);
-      setMsg(t("checkingWord"));
-    }
+    S.checking = true;
+    toggleInputs(true);
+    setMsg(t("checkingWord"));
     const valid = await isRealWord(myLang, g);
-    if (needsCheck){
-      S.checking = false;
-      if (S.gen !== myGen || S.over) return; // new game / give-up happened while we were waiting
-      toggleInputs(false);
-      inputsEl.children[S.len - 1].focus();
-    }
+    if (S.gen !== myGen || S.over) return; // new game / give-up happened while we were waiting — that round owns S.checking/inputs now
+    S.checking = false;
+    toggleInputs(false);
+    inputsEl.children[S.len - 1].focus();
     if (valid === false) return setMsg(t("notRealWord", g.toUpperCase()), "err");
     if (valid === undefined) return setMsg(t("cantVerify"), "err");
   }
@@ -1140,6 +1263,7 @@ function finish(won){
     S.wins++; S.streak++;
     if (S.best === null || S.guesses.length < S.best) S.best = S.guesses.length;
   } else S.streak = 0;
+  saveSettings(); // persist the updated stats immediately, not just on next newGame()
 
   showOverlay(won);
   if (won) confetti.burst();
@@ -1324,10 +1448,10 @@ if (window.matchMedia){
 }
 
 /* ---------------- Saved settings ---------------- */
-// Remembers the last-used mode/language/length/difficulty across visits — same idea as the
-// theme preference above. Applied once at startup (see bottom of file); kept up to date from
-// newGame(), since every settings change (mode switch, language switch, length/difficulty
-// select, new game) already funnels through there.
+// Remembers the last-used mode/language/length/difficulty, plus running session stats
+// (wins/played/streak/best — surfaced in the sidebar's Stat view), across visits. Settings
+// are kept up to date from newGame(); stats from finish(), right after S.wins/streak/best
+// change.
 const SETTINGS_KEY = "findit_settings";
 function loadSavedSettings(){
   try {
@@ -1337,7 +1461,12 @@ function loadSavedSettings(){
   } catch { return null; }
 }
 function saveSettings(){
-  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ mode: S.mode, lang: S.lang, len: S.len, diff: diffSel.value })); } catch {}
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+      mode: S.mode, lang: S.lang, len: S.len, diff: diffSel.value,
+      wins: S.wins, played: S.played, streak: S.streak, best: S.best,
+    }));
+  } catch {}
 }
 
 /* ---------------- Language ---------------- */
@@ -1360,11 +1489,19 @@ function applyLanguage(lang){
   $("legendExact").textContent = L.legendExact;
   $("legendPartial").textContent = L.legendPartial;
   $("legendWrong").textContent = L.legendWrong;
+  $("mpLegendExact").textContent = L.legendExact;
+  $("mpLegendPartial").textContent = L.legendPartial;
+  $("mpLegendWrong").textContent = L.legendWrong;
   $("newBtn").textContent = L.newGameBtn;
   $("giveBtn").textContent = L.giveUpBtn;
   $("footer").innerHTML = `${L.footerHint1}<br>${L.footerWordHint}`;
   $("againBtn").textContent = L.playAgainBtn;
   $("playAgainHint").textContent = L.playAgainHint;
+  $("navPlayText").textContent = L.navPlay;
+  $("navRoomText").textContent = L.navRoom;
+  $("navStatText").textContent = L.navStat;
+  $("statViewTitle").textContent = L.statViewTitle;
+  $("statViewHint").textContent = L.statViewHint;
   buildDiffOptions();
   buildLenOptions();
 }
@@ -1378,6 +1515,45 @@ function setMenu(open){
   menuBtn.setAttribute("aria-expanded", String(open));
 }
 menuBtn.addEventListener("click", () => setMenu(!settingsPanel.classList.contains("open")));
+
+/* ---------------- Bottom nav & view switching ---------------- */
+// Three top-level sections sharing one main-content slot: Play (the board), Room
+// (multiplayer, see mpOpen/mpClose below), Stat (session totals). Only one shows at a
+// time; body.mp-active / body.stat-active (CSS) hide the single-player board accordingly.
+const navButtons = { play: $("navPlay"), room: $("navRoom"), stat: $("navStat") };
+function setSideNavActive(view){
+  for (const [key, btn] of Object.entries(navButtons)){
+    const on = key === view;
+    btn.classList.toggle("on", on);
+    if (on) btn.setAttribute("aria-current", "page"); else btn.removeAttribute("aria-current");
+  }
+}
+function renderStatView(){
+  $("statTiles").innerHTML = `
+    <div class="stat"><span>${t("statStreak")}</span><b>${S.streak}</b></div>
+    <div class="stat"><span>${t("statBest")}</span><b>${S.best ?? "—"}</b></div>
+    <div class="stat"><span>${t("statWon")}</span><b>${S.wins}/${S.played}</b></div>`;
+}
+function showStatView(){ renderStatView(); $("statView").classList.remove("hide"); document.body.classList.add("stat-active"); }
+function hideStatView(){ $("statView").classList.add("hide"); document.body.classList.remove("stat-active"); }
+
+function setActiveView(view){
+  if (view === "play"){
+    if (document.body.classList.contains("mp-active")) mpClose();
+    hideStatView();
+    setSideNavActive("play");
+  } else if (view === "room"){
+    hideStatView();
+    mpOpen(); // mpSetOpen(true) below also syncs the nav to "room"
+  } else if (view === "stat"){
+    if (document.body.classList.contains("mp-active")) mpClose(); // resets the nav to "play" first
+    showStatView();
+    setSideNavActive("stat");
+  }
+}
+navButtons.play.addEventListener("click", () => setActiveView("play"));
+navButtons.room.addEventListener("click", () => setActiveView("room"));
+navButtons.stat.addEventListener("click", () => setActiveView("stat"));
 
 /* ---------------- Install as app ---------------- */
 // Chromium-based browsers fire this instead of showing their own install UI when the page
@@ -1417,13 +1593,15 @@ $("modeSeg").addEventListener("click", e => {
   [...e.currentTarget.children].forEach(x => x.classList.remove("on"));
   b.classList.add("on");
   S.mode = b.dataset.mode;
+  syncLangAvailability();
+  if (S.mode === "word" && S.lang !== WORD_MODE_LANG) applyLanguage(WORD_MODE_LANG); // word mode is English-only
   buildLenOptions();
   newGame();
 });
 lenSel.addEventListener("change", newGame);
 diffSel.addEventListener("change", newGame);
 $("newBtn").addEventListener("click", () => { newGame(); setMenu(false); });
-$("giveBtn").addEventListener("click", () => { if (!S.over) finish(false); });
+$("giveBtn").addEventListener("click", () => { if (!S.over && !S.checking) finish(false); });
 $("againBtn").addEventListener("click", newGame);
 $("overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeOverlay(); });
 document.addEventListener("keydown", e => {
@@ -1433,7 +1611,7 @@ document.addEventListener("keydown", e => {
 
   // typing anywhere on the page drops the character into the next empty box
   if (S.over || S.checking || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
-  const valid = S.mode === "num" ? /^[0-9]$/ : letterRegex();
+  const valid = S.mode === "num" ? /^[0-9]$/ : WORD_CHAR_REGEX;
   if (!valid.test(e.key)) return;
   const cells = [...inputsEl.children];
   if (cells.includes(document.activeElement)) return;   // already typing in a box
@@ -1479,9 +1657,12 @@ function mpShow(screen){
 
 // Swaps the page between the single-player board and the multiplayer race section — an
 // inline view switch, not a popup — via a body-level class the CSS hides the board on.
+// Also keeps the sidebar's active link in sync, however this got triggered (the Room
+// link, the in-panel close button, or Escape) — closing always falls back to "play".
 function mpSetOpen(open){
   mp$("mpOverlay").classList.toggle("hide", !open);
   document.body.classList.toggle("mp-active", open);
+  setSideNavActive(open ? "room" : "play");
 }
 
 function mpOpen(){
@@ -1500,8 +1681,6 @@ function mpOpen(){
 }
 function mpClose(){ mpSetOpen(false); } // hides only; the socket/game keeps running
 
-mp$("onlineBtn").addEventListener("click", () => { mpOpen(); setMenu(false); });
-mp$("mpCloseBtn").addEventListener("click", mpClose);
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !mp$("mpOverlay").classList.contains("hide")) mpClose(); });
 
 /* ---- Sign up ---- */
@@ -1534,7 +1713,7 @@ mp$("mpEditNameBtn").addEventListener("click", () => {
 function mpBuildLenOptions(){
   const opts = MP.settings.mode === "num"
     ? [3,4,5,6].map(n => [n, `${n} digits`])
-    : Object.keys(WORDS_BY_LANG[MP.settings.lang]).map(Number).sort((a,b)=>a-b).map(n => [n, `${n} letters`]);
+    : WORD_LENGTHS.map(n => [n, `${n} letters`]);
   mp$("mpLenSel").innerHTML = opts.map(([v,label]) => `<option value="${v}">${label}</option>`).join("");
   const want = opts.some(o => o[0] === MP.settings.len) ? MP.settings.len : (MP.settings.mode === "num" ? 4 : 5);
   MP.settings.len = want;
@@ -1543,6 +1722,11 @@ function mpBuildLenOptions(){
 function mpSyncSettingsUI(){
   mp$("mpNumbersBtn").classList.toggle("on", MP.settings.mode === "num");
   mp$("mpWordsBtn").classList.toggle("on", MP.settings.mode === "word");
+  // word rounds have no built-in list, so they're English-only — same rule as single-player
+  // (see WORD_MODE_LANG above)
+  const wordOnly = MP.settings.mode === "word";
+  [...mp$("mpLangSel").options].forEach(o => { o.disabled = wordOnly && o.value !== WORD_MODE_LANG; });
+  if (wordOnly && MP.settings.lang !== WORD_MODE_LANG) MP.settings.lang = WORD_MODE_LANG;
   mp$("mpLangSel").value = MP.settings.lang;
   mpBuildLenOptions();
 }
@@ -1932,14 +2116,21 @@ function mpRenderResult(){
 }
 mp$("mpRematchBtn").addEventListener("click", () => { if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "rematch" })); });
 
-// restore last visit's mode/language/length/difficulty, if any, before the first render
+// restore last visit's mode/language/length/difficulty and session stats, if any, before
+// the first render
 const saved = loadSavedSettings();
 if (saved){
   if (saved.mode === "num" || saved.mode === "word") S.mode = saved.mode;
   if (I18N[saved.lang]) S.lang = saved.lang;
   if (Number.isInteger(saved.len)) S.len = saved.len;
+  if (Number.isInteger(saved.wins)) S.wins = saved.wins;
+  if (Number.isInteger(saved.played)) S.played = saved.played;
+  if (Number.isInteger(saved.streak)) S.streak = saved.streak;
+  if (Number.isInteger(saved.best) || saved.best === null) S.best = saved.best;
 }
+if (S.mode === "word" && S.lang !== WORD_MODE_LANG) S.lang = WORD_MODE_LANG; // a saved fr/ar+word pairing from before word mode went English-only
 document.querySelectorAll("#modeSeg button[data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === S.mode));
+syncLangAvailability();
 applyLanguage(S.lang); // builds the length/difficulty options for the restored mode+language
 if (saved && [...diffSel.options].some(o => o.value === saved.diff)) diffSel.value = saved.diff;
 newGame();
