@@ -113,39 +113,44 @@
   }
   .app-inner{width:100%;max-width:660px}
 
-  header{text-align:center;margin-bottom:24px;position:relative}
+  /* header is a two-part column: a top row and the subtitle beneath it. The top row
+     keeps the title truly centred on the full width no matter how wide the icon group
+     or the room button are — both sit out of flow, pinned to their own edge, while the
+     title is the row's only in-flow content and gets centred against the whole row. */
+  header{margin-bottom:24px}
+  .header-top{position:relative;display:flex;align-items:center;justify-content:center;min-height:42px}
   h1{
     margin:0;font-family:"Fredoka","Outfit",system-ui,sans-serif;
     font-weight:600;font-size:34px;letter-spacing:-.02em;color:var(--text);
-    display:flex;align-items:center;justify-content:center;gap:11px;
+    display:flex;align-items:center;gap:11px;
   }
   h1::before{
     content:"";width:12px;height:12px;border-radius:4px;
     background:var(--accent);transform:translateY(-2px);flex:none;
   }
-  .sub{color:var(--muted);font-size:14px;font-weight:300;margin-top:7px}
+  .sub{color:var(--muted);font-size:14px;font-weight:300;margin-top:7px;text-align:center}
 
+  /* menu + theme sit together, pinned to the row's start edge (right in RTL — a
+     logical inset, so it flips with `dir` automatically, no manual override needed) */
+  .header-left{
+    position:absolute;inset-inline-start:0;top:50%;transform:translateY(-50%);
+    display:flex;align-items:center;gap:8px;
+  }
   .theme-btn,.menu-btn{
-    position:absolute;top:2px;
     width:42px;height:42px;border-radius:50%;flex:none;
     display:flex;align-items:center;justify-content:center;
     background:var(--panel);border:1px solid var(--line);color:var(--muted);
     font-size:18px;cursor:pointer;transition:color .2s,border-color .2s,transform .4s cubic-bezier(.34,1.56,.64,1);
     overflow:hidden;
   }
-  .theme-btn{position:static;right:auto}
-  .menu-btn{left:0;font-size:16px}
+  .menu-btn{font-size:16px}
   .theme-btn:hover{color:var(--text);border-color:var(--line-strong);transform:rotate(-18deg)}
   .menu-btn:hover,.menu-btn.on{color:var(--accent);border-color:var(--accent)}
   .theme-btn:focus-visible,.menu-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
-  html[dir="rtl"] .menu-btn{left:auto;right:0}
 
-  /* room button sits beside the theme button, both anchored top-right (top-left in
-     RTL) as a flex pair — a plain flex gap, not a hardcoded offset, so the room
-     button's label (its width varies by language) never has to be accounted for by hand */
-  .header-actions{position:absolute;top:2px;right:0;display:flex;align-items:center;gap:8px}
-  html[dir="rtl"] .header-actions{right:auto;left:0}
+  /* room button pinned to the row's end edge (left in RTL), same logical-inset trick */
   .room-btn{
+    position:absolute;inset-inline-end:0;top:50%;transform:translateY(-50%);
     height:42px;flex:none;
     display:flex;align-items:center;justify-content:center;gap:7px;
     padding:0 15px;border-radius:var(--pill);
@@ -441,8 +446,7 @@
     h1{font-size:clamp(26px,8vw,34px)}
     .sub{font-size:13px}
     .theme-btn{width:38px;height:38px;font-size:17px}
-    .menu-btn{width:38px;height:38px;top:0}
-    .header-actions{top:0}
+    .menu-btn{width:38px;height:38px}
     .room-btn{height:38px;padding:0 13px;font-size:13px}
     .room-btn .room-btn-ic{font-size:14px}
     .card{padding:14px;border-radius:18px}
@@ -497,7 +501,6 @@
   .mp-modal .trophy,.mp-modal .reveal,.mp-modal .code-big{text-align:center}
   /* single-player's board hides while the race screen is showing, so the page
      reads as one view at a time instead of stacking both */
-  body.mp-active #statusCard,
   body.mp-active #banner,
   body.mp-active #playCard,
   body.mp-active #settingsPanel,
@@ -564,15 +567,17 @@
   <div class="app-inner">
 
   <header>
-    <button class="menu-btn" id="menuBtn" title="Game menu" aria-label="Toggle mode &amp; settings menu" aria-expanded="false" aria-controls="settingsPanel">☰</button>
-    <h1>Find It</h1>
-    <div class="sub" id="subtitle">Crack the hidden code — numbers or words.</div>
-    <div class="header-actions">
+    <div class="header-top">
+      <div class="header-left">
+        <button class="menu-btn" id="menuBtn" title="Game menu" aria-label="Toggle mode &amp; settings menu" aria-expanded="false" aria-controls="settingsPanel">☰</button>
+        <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">☾</button>
+      </div>
+      <h1>Find It</h1>
       <button class="room-btn" id="roomBtn" type="button" title="Room" aria-label="Open multiplayer room">
         <span class="room-btn-ic" id="roomBtnIcon" aria-hidden="true">⚔️</span><span id="roomBtnText">Room</span>
       </button>
-      <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">☾</button>
     </div>
+    <div class="sub" id="subtitle">Crack the hidden code — numbers or words.</div>
   </header>
 
   <div class="collapse" id="settingsPanel">
@@ -609,7 +614,9 @@
     </div>
   </div>
 
-  <div class="card" id="statusCard">
+  <!-- Hidden from view (per design), but left in the DOM: updateLeft()/newGame() write
+       into #left and #modePill unconditionally, so removing the elements would throw. -->
+  <div class="card hide" id="statusCard">
     <div class="status">
       <div class="pill"><span class="pill-ic" aria-hidden="true">🎯</span><span id="triesLeftLabel">Tries left</span> <b id="left">10</b></div>
       <div class="pill"><span class="pill-ic" aria-hidden="true">🛡</span><span id="modePill">4 digits · repeats allowed</span></div>
