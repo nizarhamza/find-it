@@ -51,11 +51,8 @@
     --scrim:rgba(12,12,16,.72);
     --modal-1:#25252d;
     --modal-2:#25252d;
-    --dock:#2b2b34;
-    --dock-ink:#f2efe8;
     --shadow:0 30px 80px rgba(0,0,0,.6);
     --shadow-card:0 1px 2px rgba(0,0,0,.25), 0 18px 40px -28px rgba(0,0,0,.85);
-    --shadow-dock:0 20px 45px -12px rgba(0,0,0,.6);
     --radius:22px;
     --radius-sm:14px;
     --pill:999px;
@@ -91,11 +88,8 @@
     --scrim:rgba(42,42,51,.42);
     --modal-1:#ffffff;
     --modal-2:#ffffff;
-    --dock:#22222a;
-    --dock-ink:#ffffff;
     --shadow:0 30px 70px rgba(42,42,51,.25);
     --shadow-card:0 1px 2px rgba(42,42,51,.04), 0 18px 40px -28px rgba(42,42,51,.35);
-    --shadow-dock:0 20px 45px -12px rgba(20,20,26,.45);
   }
 
   *{box-sizing:border-box}
@@ -110,7 +104,7 @@
   }
   .shell{display:flex;flex-direction:column;min-height:100vh}
 
-  .app{flex:1;min-width:0;display:flex;justify-content:center;padding:26px 16px calc(120px + env(safe-area-inset-bottom));position:relative}
+  .app{flex:1;min-width:0;display:flex;justify-content:center;padding:26px 16px calc(26px + env(safe-area-inset-bottom));position:relative}
   .app::before{
     content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
     background:
@@ -118,30 +112,6 @@
       radial-gradient(820px 500px at 112% 6%, var(--glow-2) 0%, transparent 58%);
   }
   .app-inner{width:100%;max-width:660px}
-
-  /* ---- floating dock — Play / Room / Stat, always visible, all viewport sizes ---- */
-  .bottombar{
-    position:fixed;left:50%;transform:translateX(-50%);
-    bottom:calc(16px + env(safe-area-inset-bottom));z-index:40;
-    display:flex;gap:4px;width:auto;max-width:calc(100% - 24px);
-    background:var(--dock);
-    border:1px solid rgba(255,255,255,.06);
-    border-radius:var(--pill);
-    padding:8px;
-    box-shadow:var(--shadow-dock);
-  }
-  .side-link{
-    flex:0 0 auto;min-width:78px;
-    display:flex;flex-direction:column;align-items:center;gap:3px;
-    border:0;background:transparent;color:rgba(255,255,255,.58);
-    padding:9px 14px 8px;border-radius:var(--pill);
-    font-family:inherit;font-size:11.5px;font-weight:500;letter-spacing:.01em;
-    cursor:pointer;transition:color .2s,background .25s;
-  }
-  .side-link .side-ic{font-size:17px;line-height:1}
-  .side-link:hover{color:#fff;background:rgba(255,255,255,.08)}
-  .side-link.on{background:#fff;color:var(--dock)}
-  .side-link:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(255,255,255,.35)}
 
   header{text-align:center;margin-bottom:24px;position:relative}
   h1{
@@ -157,19 +127,37 @@
 
   .theme-btn,.menu-btn{
     position:absolute;top:2px;
-    width:42px;height:42px;border-radius:50%;
+    width:42px;height:42px;border-radius:50%;flex:none;
     display:flex;align-items:center;justify-content:center;
     background:var(--panel);border:1px solid var(--line);color:var(--muted);
     font-size:18px;cursor:pointer;transition:color .2s,border-color .2s,transform .4s cubic-bezier(.34,1.56,.64,1);
     overflow:hidden;
   }
-  .theme-btn{right:0}
+  .theme-btn{position:static;right:auto}
   .menu-btn{left:0;font-size:16px}
   .theme-btn:hover{color:var(--text);border-color:var(--line-strong);transform:rotate(-18deg)}
   .menu-btn:hover,.menu-btn.on{color:var(--accent);border-color:var(--accent)}
   .theme-btn:focus-visible,.menu-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
-  html[dir="rtl"] .theme-btn{right:auto;left:0}
   html[dir="rtl"] .menu-btn{left:auto;right:0}
+
+  /* room button sits beside the theme button, both anchored top-right (top-left in
+     RTL) as a flex pair — a plain flex gap, not a hardcoded offset, so the room
+     button's label (its width varies by language) never has to be accounted for by hand */
+  .header-actions{position:absolute;top:2px;right:0;display:flex;align-items:center;gap:8px}
+  html[dir="rtl"] .header-actions{right:auto;left:0}
+  .room-btn{
+    height:42px;flex:none;
+    display:flex;align-items:center;justify-content:center;gap:7px;
+    padding:0 15px;border-radius:var(--pill);
+    background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    font-family:inherit;font-size:14px;font-weight:500;
+    cursor:pointer;transition:color .2s,border-color .2s;
+  }
+  /* the emoji glyph's own metrics sit a touch high of the label's — nudge it down so
+     icon and text read as centred on the same line rather than icon-above-baseline */
+  .room-btn .room-btn-ic{font-size:15px;line-height:1;transform:translateY(1px)}
+  .room-btn:hover,.room-btn.on{color:var(--accent);border-color:var(--accent)}
+  .room-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
 
   .card{
     background:var(--panel);
@@ -441,10 +429,6 @@
   .stat span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;font-weight:600;color:var(--muted)}
   .stat b{font-family:"Fredoka","Outfit",sans-serif;font-weight:600;font-size:20px}
 
-  .stat-view-title{margin:0 0 6px;font-family:"Fredoka","Outfit",sans-serif;font-size:20px;font-weight:600;letter-spacing:-.02em}
-  #statView .stats{justify-content:flex-start}
-  #statView .stat{flex:1;min-width:100px;text-align:center}
-
   .modal .btn{width:100%;padding:13px}
   .modal .hint{margin:14px 0 0;font-size:12px;color:var(--muted)}
 
@@ -453,15 +437,15 @@
 
   /* ============ MOBILE ============ */
   @media (max-width:560px){
-    .app{padding:18px 12px calc(112px + env(safe-area-inset-bottom))}
+    .app{padding:18px 12px calc(18px + env(safe-area-inset-bottom))}
     h1{font-size:clamp(26px,8vw,34px)}
     .sub{font-size:13px}
-    .theme-btn{width:38px;height:38px;font-size:17px;top:0}
+    .theme-btn{width:38px;height:38px;font-size:17px}
     .menu-btn{width:38px;height:38px;top:0}
+    .header-actions{top:0}
+    .room-btn{height:38px;padding:0 13px;font-size:13px}
+    .room-btn .room-btn-ic{font-size:14px}
     .card{padding:14px;border-radius:18px}
-
-    .bottombar{padding:6px;gap:2px}
-    .side-link{min-width:0;flex:1;padding:8px 12px 7px}
 
     /* multiplayer's create-room settings row (just 2 selects, no scroll strip) still
        benefits from a compact 2-column grid on narrow phones. */
@@ -513,11 +497,11 @@
   .mp-modal .trophy,.mp-modal .reveal,.mp-modal .code-big{text-align:center}
   /* single-player's board hides while the race screen is showing, so the page
      reads as one view at a time instead of stacking both */
-  body.mp-active #statusCard, body.stat-active #statusCard,
-  body.mp-active #banner, body.stat-active #banner,
-  body.mp-active #playCard, body.stat-active #playCard,
-  body.mp-active #settingsPanel, body.stat-active #settingsPanel,
-  body.mp-active #menuBtn, body.stat-active #menuBtn{display:none}
+  body.mp-active #statusCard,
+  body.mp-active #banner,
+  body.mp-active #playCard,
+  body.mp-active #settingsPanel,
+  body.mp-active #menuBtn{display:none}
   .mp-screen h2{margin-top:0;font-family:"Fredoka","Outfit",sans-serif;font-weight:600;letter-spacing:-.02em;color:var(--text)}
   #mpResult{text-align:center}
   .mp-sub{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0 0 16px}
@@ -583,7 +567,12 @@
     <button class="menu-btn" id="menuBtn" title="Game menu" aria-label="Toggle mode &amp; settings menu" aria-expanded="false" aria-controls="settingsPanel">☰</button>
     <h1>Find It</h1>
     <div class="sub" id="subtitle">Crack the hidden code — numbers or words.</div>
-    <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">☾</button>
+    <div class="header-actions">
+      <button class="room-btn" id="roomBtn" type="button" title="Room" aria-label="Open multiplayer room">
+        <span class="room-btn-ic" id="roomBtnIcon" aria-hidden="true">⚔️</span><span id="roomBtnText">Room</span>
+      </button>
+      <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">☾</button>
+    </div>
   </header>
 
   <div class="collapse" id="settingsPanel">
@@ -643,14 +632,6 @@
 
     <div class="inputs" id="inputs"></div>
     <div class="msg" id="msg"></div>
-  </div>
-
-  <!-- Session stats — a third sidebar section, shown in place of the board like the
-       multiplayer room below. Persisted in localStorage (see saveSettings()). -->
-  <div class="card hide" id="statView">
-    <h2 class="stat-view-title" id="statViewTitle">Your stats</h2>
-    <p class="mp-sub" id="statViewHint">Tracked on this device.</p>
-    <div class="stats" id="statTiles"></div>
   </div>
 
   <!-- Multiplayer race: an inline section of the page (not a popup) — shown in place of
@@ -748,18 +729,6 @@
 
   </div>
   </div>
-
-  <nav class="bottombar" id="bottomBar" aria-label="Sections">
-    <button class="side-link on" data-view="play" id="navPlay" type="button" aria-current="page">
-      <span class="side-ic" aria-hidden="true">▶</span><span id="navPlayText">Play</span>
-    </button>
-    <button class="side-link" data-view="room" id="navRoom" type="button">
-      <span class="side-ic" aria-hidden="true">👥</span><span id="navRoomText">Room</span>
-    </button>
-    <button class="side-link" data-view="stat" id="navStat" type="button">
-      <span class="side-ic" aria-hidden="true">📊</span><span id="navStatText">Stat</span>
-    </button>
-  </nav>
 </div>
 
 <canvas id="fx" class="hide"></canvas>
@@ -836,8 +805,7 @@ en: {
   subtitle: "Crack the hidden code — numbers or words.",
   menuTitle: "Game menu", menuAria: "Toggle mode & settings menu",
   themeToLight: "Switch to light mode", themeToDark: "Switch to dark mode", themeAria: "Switch colour theme",
-  navPlay: "Play", navRoom: "Room", navStat: "Stat",
-  statViewTitle: "Your stats", statViewHint: "Tracked on this device.",
+  navRoom: "Room", navPlay: "Play",
   modeLabel: "Mode", numbersBtn: "Numbers", wordsBtn: "Words", settingsLabel: "Settings", langLabel: "Language",
   diffEasy: "Easy", diffNormal: "Normal", diffHard: "Hard", diffZen: "Zen",
   newGameBtn: "New game", giveUpBtn: "Give up",
@@ -880,8 +848,7 @@ fr: {
   subtitle: "Devinez le code caché — chiffres ou mots.",
   menuTitle: "Menu du jeu", menuAria: "Afficher ou masquer le mode et les paramètres",
   themeToLight: "Passer au thème clair", themeToDark: "Passer au thème sombre", themeAria: "Changer de thème",
-  navPlay: "Jouer", navRoom: "Salon", navStat: "Stats",
-  statViewTitle: "Vos statistiques", statViewHint: "Suivies sur cet appareil.",
+  navRoom: "Salon", navPlay: "Jouer",
   modeLabel: "Mode", numbersBtn: "Chiffres", wordsBtn: "Mots", settingsLabel: "Paramètres", langLabel: "Langue",
   diffEasy: "Facile", diffNormal: "Normal", diffHard: "Difficile", diffZen: "Zen",
   newGameBtn: "Nouvelle partie", giveUpBtn: "Abandonner",
@@ -924,8 +891,7 @@ ar: {
   subtitle: "اكتشف الشيفرة الخفية — أرقام أو كلمات.",
   menuTitle: "قائمة اللعبة", menuAria: "إظهار أو إخفاء الوضع والإعدادات",
   themeToLight: "التبديل إلى الوضع الفاتح", themeToDark: "التبديل إلى الوضع الداكن", themeAria: "تغيير المظهر",
-  navPlay: "لعب", navRoom: "غرفة", navStat: "إحصاء",
-  statViewTitle: "إحصائياتك", statViewHint: "محفوظة على هذا الجهاز.",
+  navRoom: "غرفة", navPlay: "لعب",
   modeLabel: "الوضع", numbersBtn: "أرقام", wordsBtn: "كلمات", settingsLabel: "الإعدادات", langLabel: "اللغة",
   diffEasy: "سهل", diffNormal: "عادي", diffHard: "صعب", diffZen: "بلا حدود",
   newGameBtn: "لعبة جديدة", giveUpBtn: "استسلام",
@@ -1506,9 +1472,9 @@ if (window.matchMedia){
 
 /* ---------------- Saved settings ---------------- */
 // Remembers the last-used mode/language/length/difficulty, plus running session stats
-// (wins/played/streak/best — surfaced in the sidebar's Stat view), across visits. Settings
-// are kept up to date from newGame(); stats from finish(), right after S.wins/streak/best
-// change.
+// (wins/played/streak/best — surfaced in the end-of-round modal, see oStats), across
+// visits. Settings are kept up to date from newGame(); stats from finish(), right after
+// S.wins/streak/best change.
 const SETTINGS_KEY = "findit_settings";
 function loadSavedSettings(){
   try {
@@ -1527,6 +1493,18 @@ function saveSettings(){
 }
 
 /* ---------------- Language ---------------- */
+// The header room button's label flips to name the *destination* of tapping it — "Room"
+// while on the board (tap to open multiplayer), "Play" while the room is open (tap to
+// return) — so it doubles as the room's close/back control. Re-run on every language
+// switch and every mpSetOpen() (see MULTIPLAYER below).
+function updateRoomBtnLabel(){
+  const inRoom = document.body.classList.contains("mp-active");
+  const label = inRoom ? t("navPlay") : t("navRoom");
+  $("roomBtnText").textContent = label;
+  $("roomBtnIcon").textContent = inRoom ? "🧩" : "⚔️";
+  $("roomBtn").title = label;
+  $("roomBtn").setAttribute("aria-label", label);
+}
 function applyLanguage(lang){
   S.lang = lang;
   langSel.value = lang;
@@ -1536,6 +1514,7 @@ function applyLanguage(lang){
   $("subtitle").textContent = L.subtitle;
   $("menuBtn").title = L.menuTitle;
   $("menuBtn").setAttribute("aria-label", L.menuAria);
+  updateRoomBtnLabel();
   applyTheme(theme); // re-applies the theme button's tooltip/aria-label in the new language
   $("modeLabel").textContent = L.modeLabel;
   $("numbersBtn").textContent = L.numbersBtn;
@@ -1554,11 +1533,6 @@ function applyLanguage(lang){
   $("footer").innerHTML = `${L.footerHint1}<br>${L.footerWordHint}`;
   $("againBtn").textContent = L.playAgainBtn;
   $("playAgainHint").textContent = L.playAgainHint;
-  $("navPlayText").textContent = L.navPlay;
-  $("navRoomText").textContent = L.navRoom;
-  $("navStatText").textContent = L.navStat;
-  $("statViewTitle").textContent = L.statViewTitle;
-  $("statViewHint").textContent = L.statViewHint;
   buildDiffOptions();
   buildLenOptions();
 }
@@ -1573,44 +1547,11 @@ function setMenu(open){
 }
 menuBtn.addEventListener("click", () => setMenu(!settingsPanel.classList.contains("open")));
 
-/* ---------------- Bottom nav & view switching ---------------- */
-// Three top-level sections sharing one main-content slot: Play (the board), Room
-// (multiplayer, see mpOpen/mpClose below), Stat (session totals). Only one shows at a
-// time; body.mp-active / body.stat-active (CSS) hide the single-player board accordingly.
-const navButtons = { play: $("navPlay"), room: $("navRoom"), stat: $("navStat") };
-function setSideNavActive(view){
-  for (const [key, btn] of Object.entries(navButtons)){
-    const on = key === view;
-    btn.classList.toggle("on", on);
-    if (on) btn.setAttribute("aria-current", "page"); else btn.removeAttribute("aria-current");
-  }
-}
-function renderStatView(){
-  $("statTiles").innerHTML = `
-    <div class="stat"><span>${t("statStreak")}</span><b>${S.streak}</b></div>
-    <div class="stat"><span>${t("statBest")}</span><b>${S.best ?? "—"}</b></div>
-    <div class="stat"><span>${t("statWon")}</span><b>${S.wins}/${S.played}</b></div>`;
-}
-function showStatView(){ renderStatView(); $("statView").classList.remove("hide"); document.body.classList.add("stat-active"); }
-function hideStatView(){ $("statView").classList.add("hide"); document.body.classList.remove("stat-active"); }
-
-function setActiveView(view){
-  if (view === "play"){
-    if (document.body.classList.contains("mp-active")) mpClose();
-    hideStatView();
-    setSideNavActive("play");
-  } else if (view === "room"){
-    hideStatView();
-    mpOpen(); // mpSetOpen(true) below also syncs the nav to "room"
-  } else if (view === "stat"){
-    if (document.body.classList.contains("mp-active")) mpClose(); // resets the nav to "play" first
-    showStatView();
-    setSideNavActive("stat");
-  }
-}
-navButtons.play.addEventListener("click", () => setActiveView("play"));
-navButtons.room.addEventListener("click", () => setActiveView("room"));
-navButtons.stat.addEventListener("click", () => setActiveView("stat"));
+/* ---------------- Room button & view switching ---------------- */
+// Two top-level sections sharing one main-content slot: Play (the board) and Room
+// (multiplayer, see mpOpen/mpClose below). Only one shows at a time; body.mp-active
+// (CSS) hides the single-player board while the room is open. The header's room
+// button (see roomBtn wiring below) toggles between the two.
 
 /* ---------------- Install as app ---------------- */
 // Chromium-based browsers fire this instead of showing their own install UI when the page
@@ -1644,6 +1585,12 @@ $("themeBtn").addEventListener("click", () => {
   themeLocked = true;
   applyTheme(theme === "dark" ? "light" : "dark");
   try { localStorage.setItem(THEME_KEY, theme); } catch {}
+});
+// Toggles the multiplayer room open/closed — the only way in or out now that the bottom
+// nav is gone. mpSetOpen() (see MULTIPLAYER below) keeps this button's "on" state synced,
+// however the room ends up closing (Leave room, Escape, …).
+$("roomBtn").addEventListener("click", () => {
+  document.body.classList.contains("mp-active") ? mpClose() : mpOpen();
 });
 $("modeSeg").addEventListener("click", e => {
   const b = e.target.closest("button[data-mode]"); if (!b) return;
@@ -1714,12 +1661,13 @@ function mpShow(screen){
 
 // Swaps the page between the single-player board and the multiplayer race section — an
 // inline view switch, not a popup — via a body-level class the CSS hides the board on.
-// Also keeps the sidebar's active link in sync, however this got triggered (the Room
-// link, the in-panel close button, or Escape) — closing always falls back to "play".
+// Also keeps the header's room button in sync, however this got triggered (the room
+// button, the in-panel close button, or Escape) — closing always falls back to "play".
 function mpSetOpen(open){
   mp$("mpOverlay").classList.toggle("hide", !open);
   document.body.classList.toggle("mp-active", open);
-  setSideNavActive(open ? "room" : "play");
+  $("roomBtn").classList.toggle("on", open);
+  updateRoomBtnLabel();
 }
 
 function mpOpen(){
