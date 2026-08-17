@@ -100,6 +100,7 @@
     --icon-globe:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/%3E%3Cpath d='M2 12h20'/%3E%3C/svg%3E");
     --icon-play:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z'/%3E%3C/svg%3E");
     --icon-flag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528'/%3E%3C/svg%3E");
+    --icon-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
   }
 
   *{box-sizing:border-box}
@@ -237,6 +238,46 @@
   }
   select:hover{border-color:var(--line-strong)}
   select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--focus)}
+
+  /* ---- custom-painted dropdown list ----
+     A native <select>'s open list always renders in OS/browser chrome — it can't be
+     themed, so on click it used to blow a plain white/grey list into an otherwise warm,
+     rounded UI. Every select is wrapped in .cselect: the real <select> stays put (still
+     focusable, still the thing screen readers and Tab/Arrow-key/type-ahead keyboard use —
+     pointer-events:none just takes it out of mouse/touch hit-testing), while the wrapper
+     itself catches the click and opens a floating .cselect-popup painted with the app's
+     own card colours. See the "custom select popup" script near the end of the page. */
+  .cselect{position:relative;cursor:pointer}
+  .cselect select{pointer-events:none}
+  .cselect:hover select{border-color:var(--line-strong)}
+  .cselect-open select{border-color:var(--accent);box-shadow:0 0 0 4px var(--focus)}
+  .cselect-popup{
+    position:fixed;z-index:80;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);
+    box-shadow:var(--shadow);
+    padding:6px;min-width:120px;max-width:min(320px,90vw);max-height:min(280px,60vh);
+    overflow-y:auto;overscroll-behavior:contain;
+    opacity:0;transform:translateY(-4px) scale(.98);transform-origin:top;
+    transition:opacity .14s ease,transform .14s ease;
+    scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+  }
+  .cselect-popup::-webkit-scrollbar{width:6px}
+  .cselect-popup::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+  .cselect-popup.open{opacity:1;transform:none}
+  .cselect-opt{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 12px;border-radius:10px;font-size:14px;color:var(--text);
+    cursor:pointer;transition:background .15s,color .15s;
+  }
+  .cselect-opt:hover{background:var(--raise)}
+  .cselect-opt.selected{color:var(--accent);font-weight:600}
+  .cselect-opt.selected::after{
+    content:"";width:14px;height:14px;flex:none;background-color:currentColor;
+    -webkit-mask:var(--icon-check) center/contain no-repeat;mask:var(--icon-check) center/contain no-repeat;
+  }
+  .cselect-opt.disabled{color:var(--muted);opacity:.5;cursor:not-allowed}
+  @media (prefers-reduced-motion:reduce){ .cselect-popup{transition:none} }
+
   /* the settings card's own config selects read as soft, rounded "pills" — quieter than
      the actions beside them, and echoing the .status .pill shape used elsewhere in the app.
      Tighter padding than a standalone select — this row packs 5 controls, see below. */
@@ -494,7 +535,7 @@
     }
     .settings-card .settings-controls > *{width:100%;min-width:0}
     .settings-card .settings-controls select{width:100%} /* langSel is nested in .field-select, not a direct child — the div stretching isn't enough on its own */
-    .settings-card .settings-controls #diffSel{grid-column:1 / -1}
+    .settings-card .settings-controls #diffSelWrap{grid-column:1 / -1}
     .btn-new,.btn-give{padding:11px 12px;font-size:13.5px}
 
     .status{font-size:13px;gap:8px}
@@ -616,15 +657,15 @@
         <div class="row settings-row">
           <label class="lbl" id="settingsLabel">Settings</label>
           <div class="settings-controls">
-            <div class="field-select">
+            <div class="field-select cselect">
               <select id="langSel" title="Language">
                 <option value="en">English</option>
                 <option value="fr">Français</option>
                 <option value="ar">العربية</option>
               </select>
             </div>
-            <select id="lenSel" title="Word length"></select>
-            <select id="diffSel" title="Difficulty"></select>
+            <div class="cselect"><select id="lenSel" title="Word length"></select></div>
+            <div class="cselect" id="diffSelWrap"><select id="diffSel" title="Difficulty"></select></div>
             <div class="settings-break" aria-hidden="true"></div>
             <button class="btn btn-new" id="newBtn">New game</button>
             <button class="btn btn-give" id="giveBtn">Give up</button>
@@ -690,12 +731,14 @@
       </div>
       <div class="row settings-row">
         <label class="lbl">Settings</label>
-        <select id="mpLangSel" title="Language">
-          <option value="en">English</option>
-          <option value="fr">Français</option>
-          <option value="ar">العربية</option>
-        </select>
-        <select id="mpLenSel" title="Word length"></select>
+        <div class="cselect">
+          <select id="mpLangSel" title="Language">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="ar">العربية</option>
+          </select>
+        </div>
+        <div class="cselect"><select id="mpLenSel" title="Word length"></select></div>
       </div>
       <button class="btn primary" id="mpCreateBtn" type="button" style="width:100%;margin-top:14px">Create a room</button>
       <div class="mp-divider"><span>or join with a code</span></div>
@@ -2196,6 +2239,105 @@ syncLangAvailability();
 applyLanguage(S.lang); // builds the length/difficulty options for the restored mode+language
 if (saved && [...diffSel.options].some(o => o.value === saved.diff)) diffSel.value = saved.diff;
 newGame();
+
+/* ---------------- Custom select popup ----------------
+   Every settings <select> (.cselect select — see CSS) is real and stays the thing that's
+   actually focused, tabbed to, and read by screen readers: nothing here touches its value,
+   its options, or any of the existing change listeners above. It's just taken out of mouse/
+   touch hit-testing (pointer-events:none), so its wrapping .cselect div is what a click
+   lands on — that opens this one shared floating panel instead of the OS-native list,
+   painted fresh from the select's live <option>s every time (so buildLenOptions() /
+   buildDiffOptions() / syncLangAvailability() rebuilding those options elsewhere just works,
+   no extra sync code needed). Keyboard users are unaffected: Tab / Arrow keys / type-ahead /
+   Enter still drive the real select exactly as before, opening its normal accessible list. */
+(function () {
+  const popup = document.createElement("div");
+  popup.className = "cselect-popup";
+  popup.setAttribute("role", "listbox");
+  popup.hidden = true;
+  document.body.appendChild(popup);
+
+  let openSelect = null;
+
+  function closePopup() {
+    if (!openSelect) return;
+    popup.classList.remove("open");
+    openSelect.closest(".cselect").classList.remove("cselect-open");
+    popup.hidden = true;
+    openSelect = null;
+  }
+
+  function renderOptions(select) {
+    popup.innerHTML = "";
+    [...select.options].forEach(opt => {
+      const row = document.createElement("div");
+      const isSelected = opt.value === select.value;
+      row.className = "cselect-opt" + (opt.disabled ? " disabled" : "") + (isSelected ? " selected" : "");
+      row.setAttribute("role", "option");
+      row.setAttribute("aria-selected", String(isSelected));
+      row.textContent = opt.text;
+      if (!opt.disabled) {
+        row.addEventListener("click", () => {
+          if (select.value !== opt.value) {
+            select.value = opt.value;
+            select.dispatchEvent(new Event("change", { bubbles: true })); // programmatic .value= fires nothing on its own
+          }
+          closePopup();
+          select.focus();
+        });
+      }
+      popup.appendChild(row);
+    });
+  }
+
+  // fixed positioning escapes .settings-controls' own horizontal scroll clipping (it can't
+  // be position:absolute inside a scrolling ancestor without getting cut off) — placed from
+  // the trigger's live viewport rect, flipped above when there's no room below
+  function place(select) {
+    const r = select.getBoundingClientRect();
+    popup.style.left = "-9999px";
+    popup.style.top = "0px";
+    popup.style.minWidth = r.width + "px";
+    popup.hidden = false;
+    const pr = popup.getBoundingClientRect();
+    const rtl = document.documentElement.dir === "rtl";
+    let left = rtl ? r.right - pr.width : r.left;
+    left = Math.max(8, Math.min(left, window.innerWidth - pr.width - 8));
+    let top = r.bottom + 6;
+    if (top + pr.height > window.innerHeight - 8 && r.top - pr.height - 6 > 8) top = r.top - pr.height - 6;
+    popup.style.left = left + "px";
+    popup.style.top = top + "px";
+  }
+
+  function openPopup(select) {
+    if (openSelect === select) { closePopup(); return; }
+    closePopup();
+    renderOptions(select);
+    place(select);
+    requestAnimationFrame(() => popup.classList.add("open")); // let the start state paint before animating in
+    openSelect = select;
+    select.closest(".cselect").classList.add("cselect-open");
+  }
+
+  document.querySelectorAll(".cselect select").forEach(select => {
+    const wrap = select.closest(".cselect");
+    wrap.addEventListener("click", () => { if (!select.disabled) { select.focus(); openPopup(select); } });
+    select.addEventListener("change", () => { if (openSelect === select) renderOptions(select); }); // keyboard Arrow keys move the real select while our popup is open — reflect it live instead of closing
+    select.addEventListener("blur", () => closePopup());
+    select.addEventListener("keydown", e => {
+      if (e.key === "Escape") closePopup();
+      else if ((e.key === "Enter" || e.key === " ") && openSelect === select) { e.preventDefault(); closePopup(); }
+      else if (e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp") && openSelect === select) e.preventDefault(); // don't also let the native list open behind ours
+    });
+  });
+
+  // clicking inside the popup (including empty padding, not just an option row) must not
+  // blur the select first — a plain mousedown on a non-focusable node still shifts focus
+  // away by default in most browsers, which would close the popup before the click lands
+  popup.addEventListener("mousedown", e => e.preventDefault());
+  window.addEventListener("resize", closePopup);
+  window.addEventListener("scroll", closePopup, true); // capture: catches the settings strip's own scroll too, which doesn't bubble
+})();
 </script>
 </body>
 </html>
