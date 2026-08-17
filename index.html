@@ -5,77 +5,91 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Find It — Numbers &amp; Words</title>
 <meta name="description" content="Find It — a Mastermind-style code breaking game. Crack a hidden number or word from colour-coded clues.">
-<meta name="theme-color" content="#0e1117" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f3f6fc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1a20" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f2efe8" media="(prefers-color-scheme: light)">
 <meta property="og:title" content="Find It — Numbers &amp; Words">
 <meta property="og:description" content="Crack the hidden code. Numbers or words, three difficulty levels.">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e1117'/%3E%3Ccircle cx='18' cy='32' r='7' fill='%2339d98a'/%3E%3Ccircle cx='36' cy='32' r='7' fill='%23ffc247'/%3E%3Ccircle cx='51' cy='32' r='5' fill='%23ff6b6b'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%231a1a20'/%3E%3Ccircle cx='18' cy='32' r='7' fill='%232fc2a2'/%3E%3Ccircle cx='36' cy='32' r='7' fill='%23f2c14e'/%3E%3Ccircle cx='51' cy='32' r='5' fill='%23f07e5f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Find It">
 <style>
+  /* ============================================================
+     FIND IT — design tokens
+     Warm paper canvas, soft cards, Fredoka display + Outfit text.
+     Feedback colours: mint (in place) · gold (misplaced) · coral (out).
+     ============================================================ */
   /* ============ DARK THEME (default) ============ */
   :root, [data-theme="dark"]{
-    --bg:#0e1117;
-    --glow-1:#1b2740;
-    --glow-2:#21203c;
-    --panel:#161b25;
-    --panel-2:#1d2431;
-    --raise:#121722;      /* buttons, pills, rows */
-    --sunk:#0f141d;       /* input cells, chips */
-    --line:#2a3341;
-    --text:#e7ecf3;
-    --muted:#8b97a8;
-    --green:#39d98a;
-    --amber:#ffc247;
-    --red:#ff6b6b;
-    --accent:#6ea8ff;
-    --violet:#b58cff;
-    --on-accent:#0b1220;
-    --green-b:rgba(57,217,138,.35);
-    --amber-b:rgba(255,194,71,.35);
-    --red-b:rgba(255,107,107,.32);
-    --focus:rgba(110,168,255,.18);
-    --scrim:rgba(6,9,14,.72);
-    --modal-1:#1b2230;
-    --modal-2:#141a25;
+    --bg:#1a1a20;
+    --glow-1:rgba(47,194,162,.10);
+    --glow-2:rgba(242,193,78,.08);
+    --panel:#25252d;
+    --panel-2:#25252d;
+    --raise:#2b2b34;      /* buttons, pills, rows */
+    --sunk:#1f1f27;       /* input cells, chips */
+    --line:#34343f;
+    --line-strong:#45454f;
+    --text:#f2efe8;
+    --muted:#9a97a6;
+    --green:#2fc2a2;
+    --amber:#f2c14e;
+    --red:#f07e5f;
+    --accent:#2fc2a2;
+    --violet:#f2c14e;
+    --on-accent:#10221d;
+    --green-b:rgba(47,194,162,.45);
+    --amber-b:rgba(242,193,78,.45);
+    --red-b:rgba(240,126,95,.45);
+    --focus:rgba(47,194,162,.22);
+    --scrim:rgba(12,12,16,.72);
+    --modal-1:#25252d;
+    --modal-2:#25252d;
     --shadow:0 30px 80px rgba(0,0,0,.6);
-    --radius:14px;
+    --shadow-card:0 1px 2px rgba(0,0,0,.25), 0 18px 40px -28px rgba(0,0,0,.85);
+    --radius:22px;
+    --radius-sm:14px;
+    --pill:999px;
     /* solid, always-vivid colours for manual marks — deliberately the same in both themes
        (unlike --green/--amber/--red, which are tuned for text contrast, not solid fills) */
-    --mark-g-bg:#22c55e; --mark-g-line:#16a34a; --mark-g-text:#ffffff;
-    --mark-a-bg:#f5b301; --mark-a-line:#c98e00; --mark-a-text:#3a2a00;
-    --mark-r-bg:#ef4444; --mark-r-line:#dc2626; --mark-r-text:#ffffff;
+    --mark-g-bg:#2fc2a2; --mark-g-line:#1fa286; --mark-g-text:#08221c;
+    --mark-a-bg:#f2c14e; --mark-a-line:#d6a32c; --mark-a-text:#3a2a00;
+    --mark-r-bg:#f07e5f; --mark-r-line:#d45f3f; --mark-r-text:#3a1408;
   }
   /* ============ LIGHT THEME ============ */
   [data-theme="light"]{
-    --bg:#f3f6fc;
-    --glow-1:#d9e5ff;
-    --glow-2:#eadffb;
+    --bg:#f2efe8;
+    --glow-1:rgba(47,194,162,.16);
+    --glow-2:rgba(242,193,78,.16);
     --panel:#ffffff;
-    --panel-2:#f7f9fe;
-    --raise:#f1f5fb;
+    --panel-2:#ffffff;
+    --raise:#f7f4ed;
     --sunk:#ffffff;
-    --line:#dce3f0;
-    --text:#18212f;
-    --muted:#5a6678;
-    --green:#0a7d45;
-    --amber:#9a6100;
-    --red:#c22133;
-    --accent:#1f5fd6;
-    --violet:#6b3ec9;
+    --line:#e4dfd5;
+    --line-strong:#cfc8ba;
+    --text:#2a2a33;
+    --muted:#797585;
+    --green:#1fa286;
+    --amber:#a97f10;
+    --red:#d45f3f;
+    --accent:#1fa286;
+    --violet:#d6a32c;
     --on-accent:#ffffff;
-    --green-b:rgba(10,125,69,.4);
-    --amber-b:rgba(154,97,0,.4);
-    --red-b:rgba(194,33,51,.35);
-    --focus:rgba(31,95,214,.2);
-    --scrim:rgba(28,40,60,.42);
+    --green-b:rgba(31,162,134,.5);
+    --amber-b:rgba(169,127,16,.5);
+    --red-b:rgba(212,95,63,.45);
+    --focus:rgba(31,162,134,.22);
+    --scrim:rgba(42,42,51,.42);
     --modal-1:#ffffff;
-    --modal-2:#f5f8fe;
-    --shadow:0 30px 70px rgba(30,45,80,.22);
+    --modal-2:#ffffff;
+    --shadow:0 30px 70px rgba(42,42,51,.25);
+    --shadow-card:0 1px 2px rgba(42,42,51,.04), 0 18px 40px -28px rgba(42,42,51,.35);
   }
 
   *{box-sizing:border-box}
@@ -84,77 +98,81 @@
     margin:0;
     background:var(--bg);
     color:var(--text);
-    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-    transition:background-color .25s ease,color .25s ease;
+    font-family:"Outfit",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    transition:background-color .3s ease,color .3s ease;
   }
   .shell{display:flex;flex-direction:column;min-height:100vh}
 
-  .app{flex:1;min-width:0;display:flex;justify-content:center;padding:24px 16px calc(88px + env(safe-area-inset-bottom));position:relative}
+  .app{flex:1;min-width:0;display:flex;justify-content:center;padding:26px 16px calc(26px + env(safe-area-inset-bottom));position:relative}
   .app::before{
     content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
     background:
-      radial-gradient(900px 500px at 15% -10%, var(--glow-1) 0%, transparent 60%),
-      radial-gradient(800px 500px at 110% 10%, var(--glow-2) 0%, transparent 55%);
+      radial-gradient(900px 520px at 12% -12%, var(--glow-1) 0%, transparent 62%),
+      radial-gradient(820px 500px at 112% 6%, var(--glow-2) 0%, transparent 58%);
   }
-  .app-inner{width:100%;max-width:640px}
+  .app-inner{width:100%;max-width:660px}
 
-  /* ---- bottom nav bar — Play / Room / Stat, always visible, all viewport sizes ---- */
-  .bottombar{
-    position:fixed;left:0;right:0;bottom:0;z-index:40;
-    display:flex;gap:4px;
-    background:linear-gradient(0deg,var(--panel),var(--panel-2));
-    border-top:1px solid var(--line);
-    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
-    box-shadow:0 -12px 28px -16px rgba(0,0,0,.35);
-  }
-  .side-link{
-    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
-    border:0;background:transparent;color:var(--muted);
-    padding:8px 4px 7px;border-radius:12px;font-size:11.5px;font-weight:700;
-    cursor:pointer;transition:.15s;
-  }
-  .side-link .side-ic{font-size:18px;line-height:1}
-  .side-link:hover{color:var(--text);background:var(--raise)}
-  .side-link.on{background:linear-gradient(180deg,var(--accent),var(--violet));color:var(--on-accent)}
-
-  header{text-align:center;margin-bottom:22px;position:relative}
+  header{text-align:center;margin-bottom:24px;position:relative}
   h1{
-    margin:0;font-size:34px;letter-spacing:-.5px;
-    background:linear-gradient(90deg,var(--accent),var(--violet) 60%,var(--green));
-    -webkit-background-clip:text;background-clip:text;color:transparent;
+    margin:0;font-family:"Fredoka","Outfit",system-ui,sans-serif;
+    font-weight:600;font-size:34px;letter-spacing:-.02em;color:var(--text);
+    display:flex;align-items:center;justify-content:center;gap:11px;
   }
-  .sub{color:var(--muted);font-size:14px;margin-top:6px}
+  h1::before{
+    content:"";width:12px;height:12px;border-radius:4px;
+    background:var(--accent);transform:translateY(-2px);flex:none;
+  }
+  .sub{color:var(--muted);font-size:14px;font-weight:300;margin-top:7px}
 
   .theme-btn,.menu-btn{
     position:absolute;top:2px;
-    width:42px;height:42px;border-radius:50%;
+    width:42px;height:42px;border-radius:50%;flex:none;
     display:flex;align-items:center;justify-content:center;
-    background:var(--raise);border:1px solid var(--line);color:var(--muted);
-    font-size:19px;cursor:pointer;transition:.2s;overflow:hidden;
+    background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    font-size:18px;cursor:pointer;transition:color .2s,border-color .2s,transform .4s cubic-bezier(.34,1.56,.64,1);
+    overflow:hidden;
   }
-  .theme-btn{right:0}
-  .menu-btn{left:0;font-size:17px}
-  .theme-btn:hover{color:var(--accent);border-color:var(--accent);transform:rotate(18deg)}
+  .theme-btn{position:static;right:auto}
+  .menu-btn{left:0;font-size:16px}
+  .theme-btn:hover{color:var(--text);border-color:var(--line-strong);transform:rotate(-18deg)}
   .menu-btn:hover,.menu-btn.on{color:var(--accent);border-color:var(--accent)}
   .theme-btn:focus-visible,.menu-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
-  html[dir="rtl"] .theme-btn{right:auto;left:0}
   html[dir="rtl"] .menu-btn{left:auto;right:0}
 
+  /* room button sits beside the theme button, both anchored top-right (top-left in
+     RTL) as a flex pair — a plain flex gap, not a hardcoded offset, so the room
+     button's label (its width varies by language) never has to be accounted for by hand */
+  .header-actions{position:absolute;top:2px;right:0;display:flex;align-items:center;gap:8px}
+  html[dir="rtl"] .header-actions{right:auto;left:0}
+  .room-btn{
+    height:42px;flex:none;
+    display:flex;align-items:center;justify-content:center;gap:7px;
+    padding:0 15px;border-radius:var(--pill);
+    background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    font-family:inherit;font-size:14px;font-weight:500;
+    cursor:pointer;transition:color .2s,border-color .2s;
+  }
+  /* the emoji glyph's own metrics sit a touch high of the label's — nudge it down so
+     icon and text read as centred on the same line rather than icon-above-baseline */
+  .room-btn .room-btn-ic{font-size:15px;line-height:1;transform:translateY(1px)}
+  .room-btn:hover,.room-btn.on{color:var(--accent);border-color:var(--accent)}
+  .room-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
+
   .card{
-    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    background:var(--panel);
     border:1px solid var(--line);
     border-radius:var(--radius);
-    padding:16px;
+    padding:18px;
     margin-bottom:16px;
+    box-shadow:var(--shadow-card);
   }
 
-  /* the settings card gets a subtle gradient outline (echoing the h1 wordmark) so it reads
-     as the one card the whole page revolves around */
+  /* the settings card is the one card the whole page revolves around — a mint hairline
+     and a slightly lifted surface set it apart without shouting */
   .settings-card{
-    position:relative;border:1.5px solid transparent;
-    background:
-      linear-gradient(180deg,var(--panel),var(--panel-2)) padding-box,
-      linear-gradient(135deg,var(--accent),var(--violet)) border-box;
+    border-color:var(--green-b);
+    box-shadow:var(--shadow-card),0 0 0 3px var(--focus);
   }
 
   /* ---- generic collapsible body (grid-rows trick — animatable, unlike max-height) ---- */
@@ -164,28 +182,30 @@
   @media (prefers-reduced-motion:reduce){ .collapse{transition:none} }
 
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .row + .row{margin-top:12px}
-  label.lbl{font-size:12px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);width:100%}
+  .row + .row{margin-top:14px}
+  label.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-weight:600;color:var(--muted);width:100%}
 
-  .seg{display:flex;background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px;flex:1;min-width:200px}
+  .seg{display:flex;background:var(--raise);border:1px solid var(--line);border-radius:var(--pill);padding:5px;gap:4px;flex:1;min-width:200px}
   .seg button{
     flex:1;border:0;background:transparent;color:var(--muted);
-    padding:9px 10px;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;
-    transition:.15s;
+    padding:9px 12px;border-radius:var(--pill);cursor:pointer;
+    font-family:inherit;font-size:14.5px;font-weight:500;
+    transition:color .2s,background .25s;
     /* flex (not inline text flow) so the ::before badge and the label centre on the same
        line together — a vertical-align nudge on the badge alone drifts with font metrics */
     display:flex;align-items:center;justify-content:center;
   }
   .seg button:hover{color:var(--text)}
-  .seg button.on{background:var(--accent);color:var(--on-accent);animation:pegPop .28s cubic-bezier(.2,1.4,.4,1)}
+  .seg button.on{background:var(--text);color:var(--bg);font-weight:600;animation:pegPop .28s cubic-bezier(.2,1.4,.4,1)}
   @keyframes pegPop{0%{transform:scale(.92)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
   /* small bordered "123" / "A" badges, matching the type of code each mode hides. Live in
      ::before, not markup — applyLanguage() overwrites these buttons' textContent on every
      language switch, which would wipe a literal <span> icon */
   #numbersBtn::before,#wordsBtn::before{
     display:flex;align-items:center;justify-content:center;flex:none;
-    width:30px;height:21px;margin-inline-end:9px;border-radius:6px;
-    border:1.5px solid currentColor;font-size:10.5px;font-weight:800;opacity:.85;
+    width:30px;height:21px;margin-inline-end:9px;border-radius:7px;
+    border:1.5px solid currentColor;font-family:"Fredoka","Outfit",sans-serif;
+    font-size:10.5px;font-weight:600;opacity:.8;
   }
   #numbersBtn::before{content:"123"}
   #wordsBtn::before{content:"A"}
@@ -193,20 +213,23 @@
 
   select{
     background:var(--raise);color:var(--text);border:1px solid var(--line);
-    border-radius:10px;padding:10px 12px;font-size:14px;cursor:pointer;
+    border-radius:var(--pill);padding:10px 14px;font-family:inherit;font-size:14px;cursor:pointer;
+    transition:border-color .2s,color .2s;
   }
+  select:hover{border-color:var(--line-strong)}
+  select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--focus)}
   /* the settings card's own config selects read as soft, rounded "pills" — quieter than
      the actions beside them, and echoing the .status .pill shape used elsewhere in the app.
      Tighter padding than a standalone select — this row packs 5 controls, see below. */
-  .settings-card .settings-row select{border-radius:999px;padding:9px 12px}
+  .settings-card .settings-row select{border-radius:var(--pill);padding:9px 13px}
   /* language gets a leading globe — the only select whose icon adds real information
      (which of the 3 languages) rather than just repeating "this is a dropdown" */
   .field-select{position:relative;flex:none}
   .field-select::before{
-    content:"🌐";position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);
+    content:"🌐";position:absolute;inset-inline-start:13px;top:50%;transform:translateY(-50%);
     font-size:12px;pointer-events:none;opacity:.85;
   }
-  .settings-card .settings-row .field-select select{padding-inline-start:30px}
+  .settings-card .settings-row .field-select select{padding-inline-start:31px}
 
   /* "SETTINGS" label stacks above its controls; the controls themselves never wrap —
      they scroll horizontally instead, so the row is always exactly one line regardless
@@ -215,7 +238,7 @@
      On narrow phones this flips to a clean two-line split instead — see MOBILE below. */
   .settings-card .settings-row{display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap}
   .settings-card .settings-controls{
-    display:flex;gap:6px;align-items:center;flex-wrap:nowrap;
+    display:flex;gap:7px;align-items:center;flex-wrap:nowrap;
     overflow-x:auto;scroll-behavior:smooth;padding-bottom:2px;
   }
   .settings-card .settings-controls::-webkit-scrollbar{height:6px}
@@ -225,79 +248,86 @@
 
   .btn{
     border:1px solid var(--line);background:var(--raise);color:var(--text);
-    padding:10px 16px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;transition:.15s;
+    padding:10px 18px;border-radius:var(--pill);cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:500;
+    transition:border-color .2s,color .2s,background .2s,filter .2s;
   }
-  .btn:hover{border-color:var(--accent);color:var(--accent)}
-  .btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent}
-  .btn.primary:hover{filter:brightness(1.1);color:var(--on-accent)}
+  .btn:hover{border-color:var(--line-strong);background:var(--panel)}
+  .btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
+  .btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent;font-weight:600}
+  .btn.primary:hover{filter:brightness(1.07);color:var(--on-accent);background:var(--accent)}
   .btn:disabled{opacity:.45;cursor:not-allowed}
 
   /* Start/end-round actions sit right alongside the settings selects — visually heavier,
      so configuration recedes and play advances even in one shared row. */
-  .btn-new,.btn-give{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 13px;font-weight:700}
-  .btn-new{background:linear-gradient(90deg,var(--accent),var(--violet));color:var(--on-accent);border-color:transparent}
-  .btn-new::before{content:"▶";font-size:11px}
-  .btn-new:hover{filter:brightness(1.1);color:var(--on-accent)}
+  .btn-new,.btn-give{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 16px;font-weight:600}
+  .btn-new{background:var(--accent);color:var(--on-accent);border-color:transparent}
+  .btn-new::before{content:"▶";font-size:10px}
+  .btn-new:hover{filter:brightness(1.07);color:var(--on-accent);background:var(--accent)}
   .btn-give::before{content:"🚩";font-size:13px}
   .btn-give:hover{color:var(--red);border-color:var(--red-b)}
 
   .status{display:flex;justify-content:space-between;align-items:center;gap:12px 10px;font-size:14px;flex-wrap:wrap}
   .status .pill{
-    display:flex;align-items:center;gap:8px;
-    background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 6px;color:var(--muted);
+    display:flex;align-items:center;gap:9px;
+    background:var(--raise);border:1px solid var(--line);border-radius:var(--pill);
+    padding:6px 15px 6px 6px;color:var(--muted);
   }
-  .status .pill b{color:var(--text)}
+  .status .pill b{color:var(--text);font-family:"Fredoka","Outfit",sans-serif;font-weight:600;font-size:16px}
   .status .pill .pill-ic{
-    flex:none;width:24px;height:24px;border-radius:50%;font-size:12px;
+    flex:none;width:26px;height:26px;border-radius:50%;font-size:12px;
     display:flex;align-items:center;justify-content:center;
     background:var(--sunk);border:1px solid var(--line);
   }
-  html[dir="rtl"] .status .pill{padding:6px 6px 6px 14px}
+  html[dir="rtl"] .status .pill{padding:6px 6px 6px 15px}
 
-  .inputs{display:flex;gap:var(--cell-gap,8px);justify-content:center;flex-wrap:nowrap;margin:4px 0 14px}
+  .inputs{display:flex;gap:var(--cell-gap,8px);justify-content:center;flex-wrap:nowrap;margin:6px 0 14px}
   .cell{
     width:var(--cell-w,52px);height:var(--cell-h,60px);text-align:center;
-    font-size:var(--cell-fs,26px);font-weight:700;text-transform:uppercase;
+    font-family:"Fredoka","Outfit",sans-serif;
+    font-size:var(--cell-fs,26px);font-weight:600;text-transform:uppercase;
     background:var(--sunk);color:var(--text);
-    border:2px solid var(--line);border-radius:12px;
-    caret-color:var(--accent);transition:width .15s,height .15s,border-color .15s,color .15s,background-color .15s;
+    border:2px solid var(--line-strong);border-radius:var(--radius-sm);
+    box-shadow:0 3px 0 var(--line);
+    caret-color:var(--accent);
+    transition:width .15s,height .15s,border-color .18s,color .18s,background-color .18s,box-shadow .18s;
     cursor:pointer;
   }
   .cell:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--focus)}
-  .cell:disabled{opacity:.5;cursor:not-allowed}
+  .cell:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
   /* manual colour marks — clicking a cell cycles through these to help reason through clues */
-  .cell.mark-g{background:var(--mark-g-bg);border-color:var(--mark-g-line);color:var(--mark-g-text)}
-  .cell.mark-a{background:var(--mark-a-bg);border-color:var(--mark-a-line);color:var(--mark-a-text)}
-  .cell.mark-r{background:var(--mark-r-bg);border-color:var(--mark-r-line);color:var(--mark-r-text)}
+  .cell.mark-g{background:var(--mark-g-bg);border-color:var(--mark-g-line);color:var(--mark-g-text);box-shadow:0 3px 0 var(--mark-g-line)}
+  .cell.mark-a{background:var(--mark-a-bg);border-color:var(--mark-a-line);color:var(--mark-a-text);box-shadow:0 3px 0 var(--mark-a-line)}
+  .cell.mark-r{background:var(--mark-r-bg);border-color:var(--mark-r-line);color:var(--mark-r-text);box-shadow:0 3px 0 var(--mark-r-line)}
 
-  .msg{min-height:20px;text-align:center;font-size:13.5px;color:var(--amber)}
+  .msg{min-height:20px;text-align:center;font-size:13.5px;font-weight:500;color:var(--muted)}
   .msg.err{color:var(--red)}
   .msg.ok{color:var(--green)}
 
-  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px}
-  .divider{border-top:1px solid var(--line);margin:14px 0}
-  .legend span{display:flex;align-items:center;gap:6px}
-  .dot{width:10px;height:10px;border-radius:50%}
-  .dot.g{background:var(--green)}.dot.a{background:var(--amber)}.dot.r{background:var(--red)}
+  .legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-bottom:12px}
+  .divider{border-top:1px solid var(--line);margin:16px 0}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none}
+  .dot.g{background:var(--mark-g-bg)}.dot.a{background:var(--mark-a-bg)}.dot.r{background:var(--mark-r-bg)}
 
   .history{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding-right:4px}
   .history::-webkit-scrollbar{width:8px}
   .history::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
-  .empty{text-align:center;color:var(--muted);font-size:13px;padding:18px 0}
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:22px 0}
 
   .guess{
     display:flex;align-items:center;gap:10px;
-    background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:8px 10px;
+    background:var(--raise);border:1px solid var(--line);border-radius:16px;padding:8px 10px;
     animation:pop .25s ease;
   }
   @keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-  .guess .no{color:var(--muted);font-size:12px;width:22px;text-align:center;flex:none}
+  .guess .no{color:var(--muted);font-family:"Fredoka","Outfit",sans-serif;font-size:12px;width:22px;text-align:center;flex:none}
   /* nowrap + min-width:0 so chips shrink to fit the row instead of wrapping to a 2nd line;
      the chip rule below lets each one shrink with them (a single glyph has room to spare) */
   .guess .chars{display:flex;gap:6px;flex:1;flex-wrap:nowrap;min-width:0}
   .guess .chars .chip{flex-shrink:1;min-width:0}
   .row-clear{
-    flex:none;width:26px;height:26px;border-radius:7px;
+    flex:none;width:26px;height:26px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;
     background:transparent;border:1px solid transparent;color:var(--muted);
     font-size:12px;cursor:pointer;transition:.15s;
@@ -305,8 +335,8 @@
   .row-clear:hover{color:var(--red);border-color:var(--red-b);background:var(--sunk)}
   .chip{
     width:34px;height:36px;display:flex;align-items:center;justify-content:center;
-    background:var(--sunk);border:1px solid var(--line);border-radius:8px;
-    font-weight:700;font-size:17px;text-transform:uppercase;
+    background:var(--sunk);border:1px solid var(--line-strong);border-radius:10px;
+    font-family:"Fredoka","Outfit",sans-serif;font-weight:600;font-size:17px;text-transform:uppercase;
     transition:background-color .15s,border-color .15s,color .15s;
   }
   /* past guesses can be colour-marked too, same as the live input boxes */
@@ -318,22 +348,24 @@
   /* same idea as .guess .chars: shrink to fit the row instead of forcing an overflow —
      min-width:0 drops each badge's content floor so they compress before anything wraps */
   .scores{display:flex;gap:6px;flex-shrink:1;min-width:0}
+  /* counters read as calm neutral pills — the colour lives in the dot, the number stays ink */
   .score{
-    display:flex;align-items:center;gap:5px;min-width:0;flex-shrink:1;justify-content:center;
-    border-radius:8px;padding:6px 8px;font-weight:700;font-size:14px;
+    display:flex;align-items:center;gap:6px;min-width:0;flex-shrink:1;justify-content:center;
+    border-radius:var(--pill);padding:6px 11px 6px 9px;
+    font-family:"Fredoka","Outfit",sans-serif;font-weight:600;font-size:14.5px;color:var(--text);
     border:1px solid var(--line);background:var(--sunk);
   }
-  .score.g{color:var(--green);border-color:var(--green-b)}
-  .score.a{color:var(--amber);border-color:var(--amber-b)}
-  .score.r{color:var(--red);border-color:var(--red-b)}
+  .score.g{border-color:var(--green-b)}
+  .score.a{border-color:var(--amber-b)}
+  .score.r{border-color:var(--red-b)}
 
   .banner{
-    text-align:center;padding:16px;border-radius:12px;margin-bottom:14px;font-size:15px;
-    border:1px solid var(--line);background:var(--raise);
+    text-align:center;padding:16px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:15px;
+    border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow-card);
   }
   .banner.win{border-color:var(--green-b);color:var(--green)}
   .banner.lose{border-color:var(--red-b);color:var(--red)}
-  .banner b{font-size:22px;letter-spacing:2px;display:block;margin-top:6px;color:var(--text);text-transform:uppercase}
+  .banner b{font-family:"Fredoka","Outfit",sans-serif;font-size:22px;letter-spacing:2px;display:block;margin-top:6px;color:var(--text);text-transform:uppercase}
 
   /* ---- celebration ---- */
   #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:60}
@@ -344,8 +376,8 @@
   }
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .modal{
-    width:100%;max-width:420px;text-align:center;padding:32px 26px;border-radius:20px;
-    background:linear-gradient(180deg,var(--modal-1),var(--modal-2));
+    width:100%;max-width:430px;text-align:center;padding:34px 28px;border-radius:26px;
+    background:var(--modal-1);
     border:1px solid var(--line);
     box-shadow:var(--shadow);
     animation:rise .45s cubic-bezier(.2,1.3,.4,1);
@@ -354,37 +386,37 @@
   .modal.win{border-color:var(--green-b)}
   .modal.lose{border-color:var(--red-b)}
 
-  .trophy{width:74px;height:74px;margin:0 auto 14px;position:relative}
+  .trophy{width:74px;height:74px;margin:0 auto 16px;position:relative}
   .trophy .ring{
     position:absolute;inset:0;border-radius:50%;
-    background:conic-gradient(from 0deg,var(--green),var(--accent),var(--violet),var(--amber),var(--green));
+    background:conic-gradient(from 0deg,var(--mark-g-bg),var(--mark-a-bg),var(--mark-r-bg),var(--mark-g-bg));
     animation:spin 4s linear infinite;
   }
-  .modal.lose .trophy .ring{background:conic-gradient(from 0deg,var(--red),var(--panel-2),var(--red));animation-duration:9s}
+  .modal.lose .trophy .ring{background:conic-gradient(from 0deg,var(--mark-r-bg),var(--panel),var(--mark-r-bg));animation-duration:9s}
   @keyframes spin{to{transform:rotate(360deg)}}
   .trophy .core{
     position:absolute;inset:5px;border-radius:50%;background:var(--modal-2);
     display:flex;align-items:center;justify-content:center;
-    font-size:30px;font-weight:800;color:var(--text);
+    font-family:"Fredoka","Outfit",sans-serif;font-size:30px;font-weight:600;color:var(--text);
   }
   .modal.win .trophy .core{color:var(--green)}
   .modal.lose .trophy .core{color:var(--red)}
 
   .modal h2{
-    margin:0 0 6px;font-size:29px;letter-spacing:-.5px;line-height:1.15;
-    background:linear-gradient(90deg,var(--green),var(--accent) 55%,var(--violet));
-    -webkit-background-clip:text;background-clip:text;color:transparent;
+    margin:0 0 8px;font-family:"Fredoka","Outfit",sans-serif;font-weight:600;
+    font-size:29px;letter-spacing:-.02em;line-height:1.15;color:var(--text);
   }
-  .modal.lose h2{background:linear-gradient(90deg,var(--red),var(--amber));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .modal.win h2{color:var(--green)}
+  .modal.lose h2{color:var(--red)}
   .modal p{margin:0 0 18px;color:var(--muted);font-size:14.5px;line-height:1.6}
-  .modal p b{color:var(--text)}
+  .modal p b{color:var(--text);font-weight:600}
 
   .reveal{
     display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 20px;
   }
   .reveal .chip{
-    width:44px;height:50px;font-size:22px;border-radius:10px;
-    border-color:var(--green-b);background:var(--sunk);color:var(--green);
+    width:46px;height:52px;font-size:22px;border-radius:var(--radius-sm);
+    border:2px solid var(--green-b);background:var(--sunk);color:var(--green);
     animation:flip .4s ease backwards;
   }
   .modal.lose .reveal .chip{color:var(--red);border-color:var(--red-b)}
@@ -393,27 +425,27 @@
   .definition{margin:-8px 0 20px;font-size:13px;font-style:italic;color:var(--muted);line-height:1.5}
 
   .stats{display:flex;gap:8px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
-  .stat{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:84px}
-  .stat span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
-  .stat b{font-size:19px}
-
-  .stat-view-title{margin:0 0 4px;font-size:19px;font-weight:800;letter-spacing:-.2px}
-  #statView .stats{justify-content:flex-start}
-  #statView .stat{flex:1;min-width:100px;text-align:center}
+  .stat{background:var(--raise);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 15px;min-width:86px}
+  .stat span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;font-weight:600;color:var(--muted)}
+  .stat b{font-family:"Fredoka","Outfit",sans-serif;font-weight:600;font-size:20px}
 
   .modal .btn{width:100%;padding:13px}
-  .modal .hint{margin:12px 0 0;font-size:12px;color:var(--muted)}
+  .modal .hint{margin:14px 0 0;font-size:12px;color:var(--muted)}
 
   .hide{display:none !important}
-  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:10px;line-height:1.7}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:14px;line-height:1.7}
 
   /* ============ MOBILE ============ */
   @media (max-width:560px){
-    body{padding:16px 10px 40px}
+    .app{padding:18px 12px calc(18px + env(safe-area-inset-bottom))}
     h1{font-size:clamp(26px,8vw,34px)}
     .sub{font-size:13px}
-    .theme-btn{width:38px;height:38px;font-size:17px;top:0}
-    .card{padding:13px;border-radius:12px}
+    .theme-btn{width:38px;height:38px;font-size:17px}
+    .menu-btn{width:38px;height:38px;top:0}
+    .header-actions{top:0}
+    .room-btn{height:38px;padding:0 13px;font-size:13px}
+    .room-btn .room-btn-ic{font-size:14px}
+    .card{padding:14px;border-radius:18px}
 
     /* multiplayer's create-room settings row (just 2 selects, no scroll strip) still
        benefits from a compact 2-column grid on narrow phones. */
@@ -439,80 +471,89 @@
     .btn-new,.btn-give{padding:11px 12px;font-size:13.5px}
 
     .status{font-size:13px;gap:8px}
-    .status .pill{padding:6px 10px}
+    .status .pill{padding:6px 12px 6px 6px}
+    html[dir="rtl"] .status .pill{padding:6px 6px 6px 12px}
 
     .guess{padding:7px 8px;gap:8px}
     .guess .chars{gap:5px}
-    .chip{width:30px;height:33px;font-size:15px;border-radius:7px}
+    .chip{width:30px;height:33px;font-size:15px;border-radius:9px}
     .scores{gap:5px}
-    .score{padding:5px 7px;font-size:13px}
+    .score{padding:5px 9px 5px 7px;font-size:13px}
     .row-clear{width:22px;height:22px;font-size:11px}
 
     .overlay{padding:14px}
-    .modal{padding:26px 18px}
+    .modal{padding:28px 20px;border-radius:22px}
     .modal h2{font-size:24px}
-    .stat{min-width:68px;padding:7px 10px}
-    .stat b{font-size:17px}
-    .reveal .chip{width:36px;height:42px;font-size:18px}
+    .stat{min-width:70px;padding:8px 11px}
+    .stat b{font-size:18px}
+    .reveal .chip{width:38px;height:44px;font-size:18px}
   }
 
   /* ============ MULTIPLAYER ============ */
   /* an inline card in the normal page flow, not a popup dialog — no fixed position,
      no backdrop; it just takes the single-player board's place while active */
-  .mp-modal{position:relative;max-width:100%;margin:0 0 16px}
+  .mp-modal{position:relative;max-width:100%;margin:0 0 16px;box-shadow:var(--shadow-card);text-align:left}
+  html[dir="rtl"] .mp-modal{text-align:right}
+  .mp-modal .trophy,.mp-modal .reveal,.mp-modal .code-big{text-align:center}
   /* single-player's board hides while the race screen is showing, so the page
      reads as one view at a time instead of stacking both */
-  body.mp-active #statusCard, body.stat-active #statusCard,
-  body.mp-active #banner, body.stat-active #banner,
-  body.mp-active #playCard, body.stat-active #playCard,
-  body.mp-active #settingsPanel, body.stat-active #settingsPanel,
-  body.mp-active #menuBtn, body.stat-active #menuBtn{display:none}
-  .mp-screen h2{margin-top:0}
-  .mp-sub{color:var(--muted);font-size:13.5px;line-height:1.5;margin:0 0 16px}
+  body.mp-active #statusCard,
+  body.mp-active #banner,
+  body.mp-active #playCard,
+  body.mp-active #settingsPanel,
+  body.mp-active #menuBtn{display:none}
+  .mp-screen h2{margin-top:0;font-family:"Fredoka","Outfit",sans-serif;font-weight:600;letter-spacing:-.02em;color:var(--text)}
+  #mpResult{text-align:center}
+  .mp-sub{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0 0 16px}
   .mp-name-input{
-    width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;
+    width:100%;box-sizing:border-box;padding:12px 16px;border-radius:var(--pill);
     border:1px solid var(--line);background:var(--sunk);color:var(--text);
-    font-size:15px;margin-bottom:12px;
+    font-family:inherit;font-size:15px;margin-bottom:12px;
   }
   .mp-name-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--focus)}
-  .mp-edit{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;vertical-align:middle;padding:2px 6px}
+  .mp-edit{border:0;background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;font-size:13px;vertical-align:middle;padding:2px 6px}
   .mp-edit:hover{color:var(--accent)}
-  .mp-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11.5px;margin:18px 0 10px;text-transform:uppercase;letter-spacing:.6px}
+  .mp-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px;margin:18px 0 10px;text-transform:uppercase;letter-spacing:.14em}
   .mp-divider::before,.mp-divider::after{content:"";flex:1;height:1px;background:var(--line)}
   .mp-hint{color:var(--muted);font-size:12.5px;text-align:center;margin:10px 0}
   .mp-code-inputs{margin:6px 0 14px}
 
   .code-big{display:flex;gap:8px;justify-content:center;margin:4px 0 18px;flex-wrap:wrap}
   .code-big span{
-    width:44px;height:54px;display:flex;align-items:center;justify-content:center;
-    background:var(--sunk);border:2px solid var(--accent);border-radius:10px;
-    font-size:24px;font-weight:800;letter-spacing:.5px;
+    width:46px;height:56px;display:flex;align-items:center;justify-content:center;
+    background:var(--sunk);border:2px solid var(--accent);border-radius:var(--radius-sm);
+    font-family:"Fredoka","Outfit",sans-serif;font-size:24px;font-weight:600;letter-spacing:.5px;
+    box-shadow:0 3px 0 var(--green-b);
   }
 
   .mp-players{display:flex;flex-direction:column;gap:8px;margin:14px 0;text-align:left}
   html[dir="rtl"] .mp-players{text-align:right}
   .mp-player{
     display:flex;align-items:center;gap:10px;
-    background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;
+    background:var(--raise);border:1px solid var(--line);border-radius:var(--pill);padding:10px 14px;font-size:14px;
   }
   .mp-player.me{border-color:var(--accent)}
   .mp-player.solved{border-color:var(--green-b)}
-  .mp-player.winner{border-color:var(--green-b);background:linear-gradient(180deg,var(--raise),var(--panel))}
+  .mp-player.winner{border-color:var(--green-b);background:var(--panel);box-shadow:0 0 0 3px var(--focus)}
   .mp-player.gaveup{opacity:.6}
-  .mp-player .mp-name{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mp-player .mp-name{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mp-player .mp-tag{
-    flex:none;font-size:10px;padding:3px 8px;border-radius:999px;
+    flex:none;font-size:10px;padding:3px 9px;border-radius:var(--pill);
     background:var(--sunk);color:var(--accent);border:1px solid var(--line);
-    text-transform:uppercase;letter-spacing:.4px;
+    text-transform:uppercase;letter-spacing:.08em;
   }
   .mp-player .mp-tag.mp-wins{color:var(--amber);border-color:var(--amber-b);text-transform:none;letter-spacing:0}
-  .mp-player .mp-attempts{flex:none;color:var(--muted);font-size:12.5px}
-  .mp-player.solved .mp-attempts{color:var(--green);font-weight:700}
+  .mp-player .mp-attempts{flex:none;color:var(--muted);font-family:"Fredoka","Outfit",sans-serif;font-size:13px}
+  .mp-player.solved .mp-attempts{color:var(--green);font-weight:600}
   .mp-player.gaveup .mp-attempts{font-style:italic}
 
   @media (max-width:560px){
-    .mp-modal{padding:22px 16px}
-    .code-big span{width:36px;height:46px;font-size:19px}
+    .mp-modal{padding:20px 16px}
+    .code-big span{width:38px;height:48px;font-size:19px}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
   }
 </style>
 </head>
@@ -526,7 +567,12 @@
     <button class="menu-btn" id="menuBtn" title="Game menu" aria-label="Toggle mode &amp; settings menu" aria-expanded="false" aria-controls="settingsPanel">☰</button>
     <h1>Find It</h1>
     <div class="sub" id="subtitle">Crack the hidden code — numbers or words.</div>
-    <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">☾</button>
+    <div class="header-actions">
+      <button class="room-btn" id="roomBtn" type="button" title="Room" aria-label="Open multiplayer room">
+        <span class="room-btn-ic" id="roomBtnIcon" aria-hidden="true">⚔️</span><span id="roomBtnText">Room</span>
+      </button>
+      <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">☾</button>
+    </div>
   </header>
 
   <div class="collapse" id="settingsPanel">
@@ -586,14 +632,6 @@
 
     <div class="inputs" id="inputs"></div>
     <div class="msg" id="msg"></div>
-  </div>
-
-  <!-- Session stats — a third sidebar section, shown in place of the board like the
-       multiplayer room below. Persisted in localStorage (see saveSettings()). -->
-  <div class="card hide" id="statView">
-    <h2 class="stat-view-title" id="statViewTitle">Your stats</h2>
-    <p class="mp-sub" id="statViewHint">Tracked on this device.</p>
-    <div class="stats" id="statTiles"></div>
   </div>
 
   <!-- Multiplayer race: an inline section of the page (not a popup) — shown in place of
@@ -691,18 +729,6 @@
 
   </div>
   </div>
-
-  <nav class="bottombar" id="bottomBar" aria-label="Sections">
-    <button class="side-link on" data-view="play" id="navPlay" type="button" aria-current="page">
-      <span class="side-ic" aria-hidden="true">▶</span><span id="navPlayText">Play</span>
-    </button>
-    <button class="side-link" data-view="room" id="navRoom" type="button">
-      <span class="side-ic" aria-hidden="true">👥</span><span id="navRoomText">Room</span>
-    </button>
-    <button class="side-link" data-view="stat" id="navStat" type="button">
-      <span class="side-ic" aria-hidden="true">📊</span><span id="navStatText">Stat</span>
-    </button>
-  </nav>
 </div>
 
 <canvas id="fx" class="hide"></canvas>
@@ -779,8 +805,7 @@ en: {
   subtitle: "Crack the hidden code — numbers or words.",
   menuTitle: "Game menu", menuAria: "Toggle mode & settings menu",
   themeToLight: "Switch to light mode", themeToDark: "Switch to dark mode", themeAria: "Switch colour theme",
-  navPlay: "Play", navRoom: "Room", navStat: "Stat",
-  statViewTitle: "Your stats", statViewHint: "Tracked on this device.",
+  navRoom: "Room", navPlay: "Play",
   modeLabel: "Mode", numbersBtn: "Numbers", wordsBtn: "Words", settingsLabel: "Settings", langLabel: "Language",
   diffEasy: "Easy", diffNormal: "Normal", diffHard: "Hard", diffZen: "Zen",
   newGameBtn: "New game", giveUpBtn: "Give up",
@@ -823,8 +848,7 @@ fr: {
   subtitle: "Devinez le code caché — chiffres ou mots.",
   menuTitle: "Menu du jeu", menuAria: "Afficher ou masquer le mode et les paramètres",
   themeToLight: "Passer au thème clair", themeToDark: "Passer au thème sombre", themeAria: "Changer de thème",
-  navPlay: "Jouer", navRoom: "Salon", navStat: "Stats",
-  statViewTitle: "Vos statistiques", statViewHint: "Suivies sur cet appareil.",
+  navRoom: "Salon", navPlay: "Jouer",
   modeLabel: "Mode", numbersBtn: "Chiffres", wordsBtn: "Mots", settingsLabel: "Paramètres", langLabel: "Langue",
   diffEasy: "Facile", diffNormal: "Normal", diffHard: "Difficile", diffZen: "Zen",
   newGameBtn: "Nouvelle partie", giveUpBtn: "Abandonner",
@@ -867,8 +891,7 @@ ar: {
   subtitle: "اكتشف الشيفرة الخفية — أرقام أو كلمات.",
   menuTitle: "قائمة اللعبة", menuAria: "إظهار أو إخفاء الوضع والإعدادات",
   themeToLight: "التبديل إلى الوضع الفاتح", themeToDark: "التبديل إلى الوضع الداكن", themeAria: "تغيير المظهر",
-  navPlay: "لعب", navRoom: "غرفة", navStat: "إحصاء",
-  statViewTitle: "إحصائياتك", statViewHint: "محفوظة على هذا الجهاز.",
+  navRoom: "غرفة", navPlay: "لعب",
   modeLabel: "الوضع", numbersBtn: "أرقام", wordsBtn: "كلمات", settingsLabel: "الإعدادات", langLabel: "اللغة",
   diffEasy: "سهل", diffNormal: "عادي", diffHard: "صعب", diffZen: "بلا حدود",
   newGameBtn: "لعبة جديدة", giveUpBtn: "استسلام",
@@ -1449,9 +1472,9 @@ if (window.matchMedia){
 
 /* ---------------- Saved settings ---------------- */
 // Remembers the last-used mode/language/length/difficulty, plus running session stats
-// (wins/played/streak/best — surfaced in the sidebar's Stat view), across visits. Settings
-// are kept up to date from newGame(); stats from finish(), right after S.wins/streak/best
-// change.
+// (wins/played/streak/best — surfaced in the end-of-round modal, see oStats), across
+// visits. Settings are kept up to date from newGame(); stats from finish(), right after
+// S.wins/streak/best change.
 const SETTINGS_KEY = "findit_settings";
 function loadSavedSettings(){
   try {
@@ -1470,6 +1493,18 @@ function saveSettings(){
 }
 
 /* ---------------- Language ---------------- */
+// The header room button's label flips to name the *destination* of tapping it — "Room"
+// while on the board (tap to open multiplayer), "Play" while the room is open (tap to
+// return) — so it doubles as the room's close/back control. Re-run on every language
+// switch and every mpSetOpen() (see MULTIPLAYER below).
+function updateRoomBtnLabel(){
+  const inRoom = document.body.classList.contains("mp-active");
+  const label = inRoom ? t("navPlay") : t("navRoom");
+  $("roomBtnText").textContent = label;
+  $("roomBtnIcon").textContent = inRoom ? "🧩" : "⚔️";
+  $("roomBtn").title = label;
+  $("roomBtn").setAttribute("aria-label", label);
+}
 function applyLanguage(lang){
   S.lang = lang;
   langSel.value = lang;
@@ -1479,6 +1514,7 @@ function applyLanguage(lang){
   $("subtitle").textContent = L.subtitle;
   $("menuBtn").title = L.menuTitle;
   $("menuBtn").setAttribute("aria-label", L.menuAria);
+  updateRoomBtnLabel();
   applyTheme(theme); // re-applies the theme button's tooltip/aria-label in the new language
   $("modeLabel").textContent = L.modeLabel;
   $("numbersBtn").textContent = L.numbersBtn;
@@ -1497,11 +1533,6 @@ function applyLanguage(lang){
   $("footer").innerHTML = `${L.footerHint1}<br>${L.footerWordHint}`;
   $("againBtn").textContent = L.playAgainBtn;
   $("playAgainHint").textContent = L.playAgainHint;
-  $("navPlayText").textContent = L.navPlay;
-  $("navRoomText").textContent = L.navRoom;
-  $("navStatText").textContent = L.navStat;
-  $("statViewTitle").textContent = L.statViewTitle;
-  $("statViewHint").textContent = L.statViewHint;
   buildDiffOptions();
   buildLenOptions();
 }
@@ -1516,44 +1547,11 @@ function setMenu(open){
 }
 menuBtn.addEventListener("click", () => setMenu(!settingsPanel.classList.contains("open")));
 
-/* ---------------- Bottom nav & view switching ---------------- */
-// Three top-level sections sharing one main-content slot: Play (the board), Room
-// (multiplayer, see mpOpen/mpClose below), Stat (session totals). Only one shows at a
-// time; body.mp-active / body.stat-active (CSS) hide the single-player board accordingly.
-const navButtons = { play: $("navPlay"), room: $("navRoom"), stat: $("navStat") };
-function setSideNavActive(view){
-  for (const [key, btn] of Object.entries(navButtons)){
-    const on = key === view;
-    btn.classList.toggle("on", on);
-    if (on) btn.setAttribute("aria-current", "page"); else btn.removeAttribute("aria-current");
-  }
-}
-function renderStatView(){
-  $("statTiles").innerHTML = `
-    <div class="stat"><span>${t("statStreak")}</span><b>${S.streak}</b></div>
-    <div class="stat"><span>${t("statBest")}</span><b>${S.best ?? "—"}</b></div>
-    <div class="stat"><span>${t("statWon")}</span><b>${S.wins}/${S.played}</b></div>`;
-}
-function showStatView(){ renderStatView(); $("statView").classList.remove("hide"); document.body.classList.add("stat-active"); }
-function hideStatView(){ $("statView").classList.add("hide"); document.body.classList.remove("stat-active"); }
-
-function setActiveView(view){
-  if (view === "play"){
-    if (document.body.classList.contains("mp-active")) mpClose();
-    hideStatView();
-    setSideNavActive("play");
-  } else if (view === "room"){
-    hideStatView();
-    mpOpen(); // mpSetOpen(true) below also syncs the nav to "room"
-  } else if (view === "stat"){
-    if (document.body.classList.contains("mp-active")) mpClose(); // resets the nav to "play" first
-    showStatView();
-    setSideNavActive("stat");
-  }
-}
-navButtons.play.addEventListener("click", () => setActiveView("play"));
-navButtons.room.addEventListener("click", () => setActiveView("room"));
-navButtons.stat.addEventListener("click", () => setActiveView("stat"));
+/* ---------------- Room button & view switching ---------------- */
+// Two top-level sections sharing one main-content slot: Play (the board) and Room
+// (multiplayer, see mpOpen/mpClose below). Only one shows at a time; body.mp-active
+// (CSS) hides the single-player board while the room is open. The header's room
+// button (see roomBtn wiring below) toggles between the two.
 
 /* ---------------- Install as app ---------------- */
 // Chromium-based browsers fire this instead of showing their own install UI when the page
@@ -1587,6 +1585,12 @@ $("themeBtn").addEventListener("click", () => {
   themeLocked = true;
   applyTheme(theme === "dark" ? "light" : "dark");
   try { localStorage.setItem(THEME_KEY, theme); } catch {}
+});
+// Toggles the multiplayer room open/closed — the only way in or out now that the bottom
+// nav is gone. mpSetOpen() (see MULTIPLAYER below) keeps this button's "on" state synced,
+// however the room ends up closing (Leave room, Escape, …).
+$("roomBtn").addEventListener("click", () => {
+  document.body.classList.contains("mp-active") ? mpClose() : mpOpen();
 });
 $("modeSeg").addEventListener("click", e => {
   const b = e.target.closest("button[data-mode]"); if (!b) return;
@@ -1657,12 +1661,13 @@ function mpShow(screen){
 
 // Swaps the page between the single-player board and the multiplayer race section — an
 // inline view switch, not a popup — via a body-level class the CSS hides the board on.
-// Also keeps the sidebar's active link in sync, however this got triggered (the Room
-// link, the in-panel close button, or Escape) — closing always falls back to "play".
+// Also keeps the header's room button in sync, however this got triggered (the room
+// button, the in-panel close button, or Escape) — closing always falls back to "play".
 function mpSetOpen(open){
   mp$("mpOverlay").classList.toggle("hide", !open);
   document.body.classList.toggle("mp-active", open);
-  setSideNavActive(open ? "room" : "play");
+  $("roomBtn").classList.toggle("on", open);
+  updateRoomBtnLabel();
 }
 
 function mpOpen(){
