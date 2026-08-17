@@ -92,7 +92,21 @@
     --shadow-card:0 1px 2px rgba(42,42,51,.04), 0 18px 40px -28px rgba(42,42,51,.35);
   }
 
+  /* Lucide icons used as CSS mask images (for the ::before glyphs — see #numbersBtn::before
+     comment above for why those two stay CSS-driven instead of inline <svg> markup: applyLanguage()
+     overwrites their buttons' textContent on every language switch). Same icon regardless of theme,
+     so defined once here rather than duplicated per theme block. */
+  :root{
+    --icon-globe:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/%3E%3Cpath d='M2 12h20'/%3E%3C/svg%3E");
+    --icon-play:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z'/%3E%3C/svg%3E");
+    --icon-flag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528'/%3E%3C/svg%3E");
+  }
+
   *{box-sizing:border-box}
+  /* inline SVG icons (Lucide) drop into text flow at font-size — 1em keeps them sized by
+     whatever font-size/width the surrounding button or pill already defines, no per-icon
+     tuning needed; the vertical-align nudge lines the glyph up with adjacent text baselines. */
+  .icon{width:1em;height:1em;display:inline-block;flex:none;vertical-align:-.125em}
   html,body{height:100%}
   body{
     margin:0;
@@ -158,8 +172,8 @@
     font-family:inherit;font-size:14px;font-weight:500;
     cursor:pointer;transition:color .2s,border-color .2s;
   }
-  /* the emoji glyph's own metrics sit a touch high of the label's — nudge it down so
-     icon and text read as centred on the same line rather than icon-above-baseline */
+  /* the icon's own metrics sit a touch high of the label's — nudge it down so icon and
+     text read as centred on the same line rather than icon-above-baseline */
   .room-btn .room-btn-ic{font-size:15px;line-height:1;transform:translateY(1px)}
   .room-btn:hover,.room-btn.on{color:var(--accent);border-color:var(--accent)}
   .room-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
@@ -230,9 +244,12 @@
   /* language gets a leading globe — the only select whose icon adds real information
      (which of the 3 languages) rather than just repeating "this is a dropdown" */
   .field-select{position:relative;flex:none}
+  /* globe glyph — a Lucide icon painted through a CSS mask (not an <img>) so it tracks
+     currentColor like the emoji it replaced, instead of needing a light/dark asset pair */
   .field-select::before{
-    content:"🌐";position:absolute;inset-inline-start:13px;top:50%;transform:translateY(-50%);
-    font-size:12px;pointer-events:none;opacity:.85;
+    content:"";position:absolute;inset-inline-start:13px;top:50%;transform:translateY(-50%);
+    width:12px;height:12px;pointer-events:none;opacity:.85;background-color:currentColor;
+    -webkit-mask:var(--icon-globe) center/contain no-repeat;mask:var(--icon-globe) center/contain no-repeat;
   }
   .settings-card .settings-row .field-select select{padding-inline-start:31px}
 
@@ -267,9 +284,15 @@
      so configuration recedes and play advances even in one shared row. */
   .btn-new,.btn-give{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 16px;font-weight:600}
   .btn-new{background:var(--accent);color:var(--on-accent);border-color:transparent}
-  .btn-new::before{content:"▶";font-size:10px}
+  .btn-new::before{
+    content:"";width:9px;height:9px;background-color:currentColor;
+    -webkit-mask:var(--icon-play) center/contain no-repeat;mask:var(--icon-play) center/contain no-repeat;
+  }
   .btn-new:hover{filter:brightness(1.07);color:var(--on-accent);background:var(--accent)}
-  .btn-give::before{content:"🚩";font-size:13px}
+  .btn-give::before{
+    content:"";width:13px;height:13px;background-color:currentColor;
+    -webkit-mask:var(--icon-flag) center/contain no-repeat;mask:var(--icon-flag) center/contain no-repeat;
+  }
   .btn-give:hover{color:var(--red);border-color:var(--red-b)}
 
   .status{display:flex;justify-content:space-between;align-items:center;gap:12px 10px;font-size:14px;flex-wrap:wrap}
@@ -569,12 +592,12 @@
   <header>
     <div class="header-top">
       <div class="header-left">
-        <button class="menu-btn" id="menuBtn" title="Game menu" aria-label="Toggle mode &amp; settings menu" aria-expanded="false" aria-controls="settingsPanel">☰</button>
-        <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">☾</button>
+        <button class="menu-btn" id="menuBtn" title="Game menu" aria-label="Toggle mode &amp; settings menu" aria-expanded="false" aria-controls="settingsPanel"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg></button>
+        <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
       </div>
       <h1>Find It</h1>
       <button class="room-btn" id="roomBtn" type="button" title="Room" aria-label="Open multiplayer room">
-        <span class="room-btn-ic" id="roomBtnIcon" aria-hidden="true">⚔️</span><span id="roomBtnText">Room</span>
+        <span class="room-btn-ic" id="roomBtnIcon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg></span><span id="roomBtnText">Room</span>
       </button>
     </div>
     <div class="sub" id="subtitle">Crack the hidden code — numbers or words.</div>
@@ -608,7 +631,7 @@
           </div>
         </div>
         <div class="row">
-          <button class="btn hide" id="installBtn" type="button" style="width:100%">⬇️ Install app</button>
+          <button class="btn hide" id="installBtn" type="button" style="width:100%"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg> Install app</button>
         </div>
       </div>
     </div>
@@ -618,8 +641,8 @@
        into #left and #modePill unconditionally, so removing the elements would throw. -->
   <div class="card hide" id="statusCard">
     <div class="status">
-      <div class="pill"><span class="pill-ic" aria-hidden="true">🎯</span><span id="triesLeftLabel">Tries left</span> <b id="left">10</b></div>
-      <div class="pill"><span class="pill-ic" aria-hidden="true">🛡</span><span id="modePill">4 digits · repeats allowed</span></div>
+      <div class="pill"><span class="pill-ic" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span id="triesLeftLabel">Tries left</span> <b id="left">10</b></div>
+      <div class="pill"><span class="pill-ic" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></span><span id="modePill">4 digits · repeats allowed</span></div>
     </div>
   </div>
 
@@ -656,7 +679,7 @@
 
     <!-- Home: create or join a room -->
     <div class="mp-screen hide" id="mpHome">
-      <h2>Hey, <span id="mpHomeName"></span> <button class="mp-edit" id="mpEditNameBtn" type="button" title="Change name">✎ edit</button></h2>
+      <h2>Hey, <span id="mpHomeName"></span> <button class="mp-edit" id="mpEditNameBtn" type="button" title="Change name"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg> edit</button></h2>
       <p class="mp-sub">Set the room up, then share the code — everyone races the same hidden code and the first exact match wins.</p>
       <div class="row">
         <label class="lbl">Mode</label>
@@ -696,8 +719,8 @@
     <!-- Race: same code, everyone guesses at once, first exact match wins -->
     <div class="mp-screen hide" id="mpRace">
       <div class="status">
-        <div class="pill"><span class="pill-ic" aria-hidden="true">🛡</span><span id="mpRaceModePill"></span></div>
-        <div class="pill"><span class="pill-ic" aria-hidden="true">🎯</span><span id="mpTriesLabel">Your tries</span> <b id="mpMyAttempts">0</b></div>
+        <div class="pill"><span class="pill-ic" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></span><span id="mpRaceModePill"></span></div>
+        <div class="pill"><span class="pill-ic" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span id="mpTriesLabel">Your tries</span> <b id="mpMyAttempts">0</b></div>
       </div>
       <div class="mp-players" id="mpRacePlayers"></div>
       <div class="divider"></div>
@@ -718,7 +741,7 @@
 
     <!-- Result: reveal + standings -->
     <div class="mp-screen hide" id="mpResult">
-      <div class="trophy"><div class="ring"></div><div class="core" id="mpTrophyCore">★</div></div>
+      <div class="trophy"><div class="ring"></div><div class="core" id="mpTrophyCore"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></div></div>
       <h2 id="mpResultTitle"></h2>
       <p id="mpResultText"></p>
       <div class="reveal" id="mpReveal"></div>
@@ -742,7 +765,7 @@
 
 <div class="overlay hide" id="overlay">
   <div class="modal" id="modal">
-    <div class="trophy"><div class="ring"></div><div class="core" id="tCore">★</div></div>
+    <div class="trophy"><div class="ring"></div><div class="core" id="tCore"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></div></div>
     <h2 id="oTitle">Congratulations!</h2>
     <p id="oText"></p>
     <div class="reveal" id="oReveal"></div>
@@ -754,6 +777,24 @@
 </div>
 
 <script>
+/* ---------------- Icons ----------------
+   Lucide (ISC-licensed) icons inlined as raw markup, swapped in via innerHTML wherever JS
+   needs to toggle between two icons on the same element (theme, room, trophy, …). Icons
+   that never change after first paint are just written straight into the HTML instead —
+   see the .icon class in <style> for how these size themselves against the surrounding text. */
+const ICONS = {
+  moon: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>',
+  sun: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>',
+  swords: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg>',
+  puzzle: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>',
+  star: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>',
+  x: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+  flag: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg>',
+  trash: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  trophy: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14.66V17a1 1 0 0 1-1 1 2 2 0 0 0-2 2v2"/><path d="M14 14.66V17a1 1 0 0 0 1 1 2 2 0 0 1 2 2v2"/><path d="M17.916 10H19.5A2.5 2.5 0 0 0 22 7.5V5a1 1 0 0 0-1-1h-3"/><path d="M4 22h16"/><path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/><path d="M6.084 10H4.5A2.5 2.5 0 0 1 2 7.5V5a1 1 0 0 1 1-1h3"/></svg>',
+  partyPopper: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/></svg>',
+};
+
 /* ---------------- Word mode ----------------
    No built-in word list: every secret and every guess is checked live against
    Datamuse. Word mode is English-only — fr/ar don't have a free dictionary API
@@ -1304,7 +1345,7 @@ function showOverlay(won){
   const n = S.guesses.length;
   const modal = $("modal");
   modal.className = "modal " + (won ? "win" : "lose");
-  $("tCore").textContent = won ? "★" : "✕";
+  $("tCore").innerHTML = won ? ICONS.star : ICONS.x;
 
   if (won){
     const [, title, line] = t("ranks").find(r => n <= r[0]);
@@ -1430,7 +1471,7 @@ function guessRowHTML(g, gi){
         <div class="score a" title="${t("legendPartial")}"><i class="dot a"></i>${g.partial}</div>
         <div class="score r" title="${t("legendWrong")}"><i class="dot r"></i>${g.wrong}</div>
       </div>
-      <button class="row-clear" data-clear-gi="${gi}" type="button" title="${t("clearColors")}" aria-label="${t("clearColors")}">🗑</button>
+      <button class="row-clear" data-clear-gi="${gi}" type="button" title="${t("clearColors")}" aria-label="${t("clearColors")}">${ICONS.trash}</button>
     </div>`;
 }
 let histBuiltCount = 0; // how many of S.guesses are already rendered as rows in #history
@@ -1465,7 +1506,7 @@ function applyTheme(newTheme){
   theme = newTheme;
   document.documentElement.setAttribute("data-theme", newTheme);
   const b = $("themeBtn");
-  b.textContent = newTheme === "dark" ? "☾" : "☀";
+  b.innerHTML = newTheme === "dark" ? ICONS.moon : ICONS.sun;
   b.title = newTheme === "dark" ? t("themeToLight") : t("themeToDark");
   b.setAttribute("aria-label", t("themeAria"));
 }
@@ -1508,7 +1549,7 @@ function updateRoomBtnLabel(){
   const inRoom = document.body.classList.contains("mp-active");
   const label = inRoom ? t("navPlay") : t("navRoom");
   $("roomBtnText").textContent = label;
-  $("roomBtnIcon").textContent = inRoom ? "🧩" : "⚔️";
+  $("roomBtnIcon").innerHTML = inRoom ? ICONS.puzzle : ICONS.swords;
   $("roomBtn").title = label;
   $("roomBtn").setAttribute("aria-label", label);
 }
@@ -1881,7 +1922,7 @@ function mpRenderFromRoom(){
 // Wins carry over across rematches in the same room — this is the room's running score,
 // shown next to every player wherever their row appears (lobby/race/result).
 function mpWinsTag(p){
-  return p.wins ? `<span class="mp-tag mp-wins">🏆 ${p.wins}</span>` : "";
+  return p.wins ? `<span class="mp-tag mp-wins">${ICONS.trophy} ${p.wins}</span>` : "";
 }
 function mpRenderLobby(){
   const room = MP.room;
@@ -2013,7 +2054,7 @@ function mpGuessRowHTML(g, gi){
         <div class="score a"><i class="dot a"></i>${g.result.partial}</div>
         <div class="score r"><i class="dot r"></i>${g.result.wrong}</div>
       </div>
-      <button class="row-clear" data-clear-gi="${gi}" type="button" title="Clear colours" aria-label="Clear colours">🗑</button>
+      <button class="row-clear" data-clear-gi="${gi}" type="button" title="Clear colours" aria-label="Clear colours">${ICONS.trash}</button>
     </div>`;
 }
 // mpRenderRace() (and so this) reruns on every room-state broadcast — i.e. every time ANY
@@ -2109,9 +2150,18 @@ function mpRenderResult(){
   const won = room.winnerId === MP.me.id;
   mp$("mpOverlay").classList.toggle("win", won);
   mp$("mpOverlay").classList.toggle("lose", !won);
-  mp$("mpTrophyCore").textContent = won ? "★" : "🏁";
+  mp$("mpTrophyCore").innerHTML = won ? ICONS.star : ICONS.flag;
   const winner = room.players.find(p => p.id === room.winnerId);
-  mp$("mpResultTitle").textContent = won ? "You won! 🎉" : (winner ? `${winner.nickname} won the race` : "Round over");
+  // nickname is untrusted (another player's chosen name) — kept in a textContent assignment
+  // (never innerHTML) so it can't inject markup; the icon is trusted static markup, appended
+  // separately rather than folded into that string.
+  const titleEl = mp$("mpResultTitle");
+  if (won){
+    titleEl.textContent = "You won! ";
+    titleEl.insertAdjacentHTML("beforeend", ICONS.partyPopper);
+  } else {
+    titleEl.textContent = winner ? `${winner.nickname} won the race` : "Round over";
+  }
   mp$("mpResultText").textContent = won ? "You cracked it first." : "Better luck next round.";
   mp$("mpReveal").innerHTML = room.secret
     ? [...room.secret].map((c, i) => `<div class="chip" style="animation-delay:${i * 70}ms">${mpEsc(c.toUpperCase())}</div>`).join("")
