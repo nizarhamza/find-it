@@ -101,6 +101,10 @@
     --icon-play:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z'/%3E%3C/svg%3E");
     --icon-flag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528'/%3E%3C/svg%3E");
     --icon-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+    /* the on-screen keyboard's actual rendered height (fixed-docked to the viewport bottom —
+       see .keyboard below), kept in sync from JS (updateKbHeight()) so .app can reserve
+       exactly enough bottom space for it instead of guessing a pixel value. */
+    --kb-h:0px;
   }
 
   *{box-sizing:border-box}
@@ -120,6 +124,11 @@
   .shell{display:flex;flex-direction:column;min-height:100vh}
 
   .app{flex:1;min-width:0;display:flex;justify-content:center;padding:26px 16px calc(26px + env(safe-area-inset-bottom));position:relative}
+  /* the on-screen keyboard is fixed to the viewport bottom (see .keyboard below), so the
+     board needs matching reserved space or its own last rows/footer would sit underneath
+     it. Multiplayer's race screen has no on-screen keyboard of its own, so it keeps the
+     plain base padding above. */
+  body:not(.mp-active) .app{padding-bottom:calc(var(--kb-h) + 26px + env(safe-area-inset-bottom))}
   .app::before{
     content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
     background:
@@ -375,12 +384,25 @@
 
   /* ---- on-screen keyboard ----
      An in-app alternative to the phone's own keyboard (see renderKeyboard() near the
-     bottom of the script) — rows are full-width flex tracks, one flex:1 key each, rather
-     than fixed-width keys that wrap: row lengths differ (10/9/7 + the wide Enter/Delete),
-     so letting each row fill the card edge-to-edge avoids any wrapping on a narrow phone.
-     Reuses .cell's raised "keycap" look (a bottom box-shadow ledge, not a real shadow). */
-  .keyboard{display:flex;flex-direction:column;gap:7px;margin-top:14px}
-  .kb-row{display:flex;gap:6px}
+     bottom of the script), docked to the viewport bottom rather than sitting inline in the
+     card — always in thumb reach, at a fixed spot, instead of scrolling away with a long
+     guess history. Centred to the same width as .app-inner so its edges line up with the
+     card above it. Always left-to-right regardless of page direction: Enter/Delete stay
+     pinned to the right (Enter bottom-right-most) in every language — word mode is
+     English-only anyway (see WORD_MODE_LANG), so this only ever matters for the number
+     pad, and a numeric keypad reading right-to-left would be confusing regardless of UI
+     language (phone dialpads never mirror for RTL either).
+     Reuses .cell's raised "keycap" look (a bottom box-shadow ledge, not a real shadow),
+     and the same solid mark-g/mark-r colours as the guess boxes for the red/green key
+     states (see refreshKeyboardMarks()). */
+  .keyboard{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;direction:ltr;
+    display:flex;flex-direction:column;align-items:center;gap:7px;
+    max-width:660px;margin:0 auto;
+    background:var(--bg);border-top:1px solid var(--line);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  }
+  .kb-row{display:flex;gap:6px;width:100%}
   .kb-key{
     flex:1;min-width:0;height:46px;
     display:flex;align-items:center;justify-content:center;
@@ -397,6 +419,18 @@
   .kb-key.enter{background:var(--accent);color:var(--on-accent);border-color:transparent;box-shadow:0 3px 0 var(--green-b)}
   .kb-key.enter:active{box-shadow:0 0 0 var(--green-b)}
   .kb-key.del:hover{color:var(--red);border-color:var(--red-b)}
+  /* characters the manual clue marks (see cycleBoxMark above) already say something about:
+     red mirrors a box proven absent, green covers both exact- and wrong-place marks — the
+     keyboard only needs "ruled out" vs "somewhere in the code", not which box said so. */
+  .kb-key.kb-green{background:var(--mark-g-bg);border-color:var(--mark-g-line);color:var(--mark-g-text);box-shadow:0 3px 0 var(--mark-g-line)}
+  .kb-key.kb-red{background:var(--mark-r-bg);border-color:var(--mark-r-line);color:var(--mark-r-text);box-shadow:0 3px 0 var(--mark-r-line)}
+
+  /* number mode: a phone-dialpad-style 3×4 grid instead of one long digit row — 1-9 plus a
+     last row of Delete/0/Enter, same corner convention as a phone or ATM keypad. Capped
+     narrower than the full card width and centred so it actually reads as a dialpad
+     instead of 3 very wide, short keys. */
+  .kb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:280px}
+  .kb-grid .kb-key{aspect-ratio:1;height:auto}
 
   .legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-bottom:12px}
   .divider{border-top:1px solid var(--line);margin:16px 0}
@@ -532,6 +566,7 @@
   /* ============ MOBILE ============ */
   @media (max-width:560px){
     .app{padding:18px 12px calc(18px + env(safe-area-inset-bottom))}
+    body:not(.mp-active) .app{padding-bottom:calc(var(--kb-h) + 18px + env(safe-area-inset-bottom))}
     h1{font-size:clamp(26px,8vw,34px)}
     .sub{font-size:13px}
     .theme-btn{width:38px;height:38px;font-size:17px}
@@ -540,8 +575,9 @@
     .room-btn .room-btn-ic{font-size:14px}
     .card{padding:14px;border-radius:18px}
     .kb-key{height:42px;font-size:13px;border-radius:9px}
-    .keyboard{gap:6px}
+    .keyboard{gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
     .kb-row{gap:4px}
+    .kb-grid{max-width:230px;gap:6px}
 
     /* multiplayer's create-room settings row (just 2 selects, no scroll strip) still
        benefits from a compact 2-column grid on narrow phones. */
@@ -596,7 +632,8 @@
   body.mp-active #banner,
   body.mp-active #playCard,
   body.mp-active #settingsPanel,
-  body.mp-active #menuBtn{display:none}
+  body.mp-active #menuBtn,
+  body.mp-active #keyboard{display:none}
   .mp-screen h2{margin-top:0;font-family:"Fredoka","Outfit",sans-serif;font-weight:600;letter-spacing:-.02em;color:var(--text)}
   #mpResult{text-align:center}
   .mp-sub{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0 0 16px}
@@ -731,7 +768,6 @@
 
     <div class="inputs" id="inputs"></div>
     <div class="msg" id="msg"></div>
-    <div class="keyboard" id="keyboard"></div>
   </div>
 
   <!-- Multiplayer race: an inline section of the page (not a popup) — shown in place of
@@ -832,6 +868,11 @@
   </div>
   </div>
 </div>
+
+<!-- Fixed to the viewport bottom, not nested in .app — see .keyboard in <style> above.
+     Sibling of #fx/#overlay below for the same reason: fixed-position layers live at the
+     body level, not inside the centred/padded .app column. -->
+<div class="keyboard" id="keyboard"></div>
 
 <canvas id="fx" class="hide"></canvas>
 
@@ -1218,6 +1259,7 @@ function refreshAllMarks(){
     const g = S.guesses[+chip.dataset.gi];
     paintBox(chip, chip.dataset.ch, g ? (g.marks[+chip.dataset.ci] || "") : "");
   });
+  refreshKeyboardMarks(); // the on-screen keyboard's key colours are derived from the same marks
 }
 // cycles ONE box's mark. getLocal/setLocal read & write that box's own green/amber
 // state; reaching or leaving red updates S.redChars instead (global).
@@ -1322,10 +1364,12 @@ function clearInputs(){
    than duplicating that logic. Delete is the one exception: there's no real keystroke for
    the browser to turn into an actual deletion, so it clears a filled cell directly, or —
    for an already-empty cell — dispatches a real "keydown" so the cell's own Backspace
-   handler above does its usual step-back-and-clear. */
+   handler above does its usual step-back-and-clear.
+   Word mode's letters are laid out AZERTY, not QWERTY — a deliberate choice, not a mode/
+   language switch (word mode is English-only regardless, see WORD_MODE_LANG). Number mode
+   is a 3×4 phone-dialpad grid (see .kb-grid in <style>) rather than one long digit row. */
 const kbEl = $("keyboard");
-const KB_ROWS_NUM = ["1234567890"];
-const KB_ROWS_WORD = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+const KB_ROWS_WORD = ["AZERTYUIOP", "QSDFGHJKLM", "WXCVBN"];
 
 function targetCell(){
   const cells = [...inputsEl.children];
@@ -1354,15 +1398,22 @@ function pressEnter(){
   if (S.checking) return;
   S.over ? newGame() : submit();
 }
+function keyBtn(ch){ return `<button type="button" class="kb-key" data-ch="${ch}">${ch}</button>`; }
+const enterBtn = extra => `<button type="button" class="kb-key ${extra} enter" data-action="enter" aria-label="${t("checkGuess")}">${ICONS.enter}</button>`;
+const delBtn = extra => `<button type="button" class="kb-key ${extra} del" data-action="del" aria-label="${t("deleteChar")}">${ICONS.backspace}</button>`;
 function renderKeyboard(){
-  const rows = S.mode === "num" ? KB_ROWS_NUM : KB_ROWS_WORD;
-  kbEl.innerHTML = rows.map((line, i) => {
-    const last = i === rows.length - 1;
-    const enter = last ? `<button type="button" class="kb-key wide enter" data-action="enter" aria-label="${t("checkGuess")}">${ICONS.enter}</button>` : "";
-    const del = last ? `<button type="button" class="kb-key wide del" data-action="del" aria-label="${t("deleteChar")}">${ICONS.backspace}</button>` : "";
-    const keys = [...line].map(ch => `<button type="button" class="kb-key" data-ch="${ch}">${ch}</button>`).join("");
-    return `<div class="kb-row">${enter}${keys}${del}</div>`;
-  }).join("");
+  if (S.mode === "num"){
+    const grid = "123456789".split("").map(keyBtn).join("") + delBtn("") + keyBtn("0") + enterBtn("");
+    kbEl.innerHTML = `<div class="kb-grid">${grid}</div>`;
+  } else {
+    kbEl.innerHTML = KB_ROWS_WORD.map((line, i) => {
+      const last = i === KB_ROWS_WORD.length - 1;
+      const keys = [...line].map(keyBtn).join("");
+      return `<div class="kb-row">${keys}${last ? delBtn("wide") : ""}${last ? enterBtn("wide") : ""}</div>`;
+    }).join("");
+  }
+  refreshKeyboardMarks();
+  updateKbHeight();
 }
 kbEl.addEventListener("click", e => {
   const btn = e.target.closest(".kb-key");
@@ -1371,6 +1422,29 @@ kbEl.addEventListener("click", e => {
   else if (btn.dataset.action === "del") pressDelete();
   else pressChar(btn.dataset.ch);
 });
+function updateKbHeight(){
+  document.documentElement.style.setProperty("--kb-h", kbEl.offsetHeight + "px");
+}
+addEventListener("resize", updateKbHeight);
+
+// Reflects the same global deductions the guess boxes already show (see cycleBoxMark
+// above) onto the matching keyboard key: red once a character is proven absent anywhere,
+// green once any box has it marked exact or misplaced anywhere in this round's history —
+// the keyboard only needs "ruled out" vs "somewhere in the code", not which box said so.
+function charStatus(ch){
+  if (S.redChars.has(ch)) return "red";
+  const greenOrAmber = el => el.classList.contains("mark-g") || el.classList.contains("mark-a");
+  const marked = [...inputsEl.children].some(c => c.value.toLowerCase() === ch && greenOrAmber(c))
+    || [...histEl.querySelectorAll(".chip[data-ch]")].some(c => c.dataset.ch === ch && greenOrAmber(c));
+  return marked ? "green" : "";
+}
+function refreshKeyboardMarks(){
+  kbEl.querySelectorAll(".kb-key[data-ch]").forEach(btn => {
+    const status = charStatus(btn.dataset.ch.toLowerCase());
+    btn.classList.toggle("kb-red", status === "red");
+    btn.classList.toggle("kb-green", status === "green");
+  });
+}
 
 /* ---------------- Word lookup (any real word, verified live — see WORD_MODE_LANG above) ---------------- */
 const dictCache = new Map(); // "lang:word" -> true | false | undefined(unverifiable)
