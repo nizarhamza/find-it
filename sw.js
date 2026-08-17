@@ -7,7 +7,7 @@
 // forever (see the fetch handler below: navigations go network-first specifically so this
 // isn't usually needed just to see a new deploy, but the cached copy itself still needs
 // refreshing eventually).
-const CACHE = "find-it-shell-v1";
+const CACHE = "find-it-shell-v2";
 const SHELL = [
   "./",
   "./index.html",
