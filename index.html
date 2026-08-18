@@ -135,10 +135,12 @@
   /* the current-guess row, keyboard and footer are all fixed to the viewport bottom,
      stacked inside #dock (see .dock below), so the board needs matching reserved space or
      its own last rows would sit underneath them. The footer shows in every mode, so its
-     height is always reserved above (base rule); the guess row + keyboard only show
-     outside multiplayer's race screen (which has its own inline inputs and no on-screen
-     keyboard), so their height is added on top of that just for single-player. */
-  body:not(.mp-active) .app{padding-bottom:calc(var(--guess-h) + var(--kb-h) + var(--footer-h) + 26px + env(safe-area-inset-bottom))}
+     height is always reserved above (base rule). The guess row only exists in single-player
+     (multiplayer's race screen keeps its own inline #mpInputs in normal flow instead — see
+     #dockGuess above), but --guess-h is 0 whenever it's hidden, so reusing the same formula
+     for the race screen is safe: it only ever adds the keyboard's real height there. */
+  body:not(.mp-active) .app,
+  body.mp-racing .app{padding-bottom:calc(var(--guess-h) + var(--kb-h) + var(--footer-h) + 26px + env(safe-area-inset-bottom))}
   .app::before{
     content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
     background:
@@ -406,16 +408,26 @@
     display:flex;flex-direction:column;
     max-width:660px;margin:0 auto;
     max-height:66.67vh; /* 2/3 of the viewport, shared between the guess row + keyboard + footer */
+    /* belt-and-suspenders alongside html,body's overscroll-behavior above: Chrome for
+       Android has a known quirk where declaring it only on the document doesn't reliably
+       contain a drag that starts on a position:fixed element with its own scrollable
+       descendant (.keyboard, just below) — it still hands the gesture to pull-to-refresh.
+       Setting it here too closes that gap. */
+    overscroll-behavior-y:contain;
   }
   /* the boxes you're actively typing into, docked right above the keyboard instead of
      scrolling away with the history above it (see #inputs/.cell further down for the box
-     styling itself). */
+     styling itself). #dockGuess is single-player's; #mpDockGuess is the same idea for a
+     live race's #mpInputs/#mpMsg — mutually exclusive, so only one is ever display:block
+     at once (see mpIsRacing() near renderKeyboard). */
   .dock-guess{
     flex:none;background:var(--bg);border-top:1px solid var(--line);padding:14px 16px 4px;
   }
-  #inputs{margin:0 0 8px}
-  #msg{padding-bottom:6px}
-  #msg:empty{display:none} /* setMsg("") clears it to no child text at all, so :empty catches exactly that — no reserved blank strip between the boxes and the keyboard when there's nothing to say */
+  #mpDockGuess{display:none}
+  body.mp-active.mp-racing #mpDockGuess{display:block}
+  #inputs,#mpInputs{margin:0 0 8px}
+  #msg,#mpMsg{padding-bottom:6px}
+  #msg:empty,#mpMsg:empty{display:none} /* setMsg("")/mpSubmitGuess clear these to no child text at all, so :empty catches exactly that — no reserved blank strip between the boxes and the keyboard when there's nothing to say */
   /* An in-app alternative to the phone's own keyboard (see renderKeyboard() near the
      bottom of the script). Centred to the same width as .app-inner so its edges line up
      with the card above it. Always left-to-right regardless of page direction: Delete
@@ -428,7 +440,7 @@
      and the same solid mark-g/mark-r colours as the guess boxes for the red/green key
      states (see refreshKeyboardMarks()). */
   .keyboard{
-    direction:ltr;flex:1;min-height:0;overflow-y:auto;
+    direction:ltr;flex:1;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;
     display:flex;flex-direction:column;align-items:center;gap:7px;
     background:var(--bg);border-top:1px solid var(--line);
     padding:10px 16px;
@@ -602,7 +614,8 @@
   /* ============ MOBILE ============ */
   @media (max-width:560px){
     .app{padding:18px 12px calc(18px + var(--footer-h) + env(safe-area-inset-bottom))}
-    body:not(.mp-active) .app{padding-bottom:calc(var(--guess-h) + var(--kb-h) + var(--footer-h) + 18px + env(safe-area-inset-bottom))}
+    body:not(.mp-active) .app,
+    body.mp-racing .app{padding-bottom:calc(var(--guess-h) + var(--kb-h) + var(--footer-h) + 18px + env(safe-area-inset-bottom))}
     h1{font-size:clamp(26px,8vw,34px)}
     .sub{font-size:13px}
     .theme-btn{width:38px;height:38px;font-size:17px}
@@ -670,8 +683,12 @@
   body.mp-active #playCard,
   body.mp-active #settingsPanel,
   body.mp-active #menuBtn,
-  body.mp-active #dockGuess,
-  body.mp-active #keyboard{display:none}
+  body.mp-active #dockGuess{display:none}
+  /* unlike the rest of the single-player board, the on-screen keyboard IS reused for the
+     race screen (see mpIsRacing()/mpPress* near renderKeyboard) — it just has nothing to
+     type into on the home/lobby/result screens, so it only shows once .mp-racing is set
+     (mpShow() toggles it in step with which mp-screen is actually visible). */
+  body.mp-active:not(.mp-racing) #keyboard{display:none}
   .mp-screen h2{margin-top:0;font-family:"Fredoka","Outfit",sans-serif;font-weight:600;letter-spacing:-.02em;color:var(--text)}
   #mpResult{text-align:center}
   .mp-sub{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0 0 16px}
@@ -699,9 +716,13 @@
   .mp-players{display:flex;flex-direction:column;gap:8px;margin:14px 0;text-align:left}
   html[dir="rtl"] .mp-players{text-align:right}
   .mp-player{
-    display:flex;align-items:center;gap:10px;
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
     background:var(--raise);border:1px solid var(--line);border-radius:var(--pill);padding:10px 14px;font-size:14px;
   }
+  /* a player with recent-results indicators (see mpRecentHTML) needs a 2nd row, which the
+     full stadium radius above doesn't suit — soften it to a normal rounded rect whenever
+     .mp-recent is actually present, and leave everyone else's untouched. */
+  .mp-player:has(.mp-recent){border-radius:var(--radius-sm)}
   .mp-player.me{border-color:var(--accent)}
   .mp-player.solved{border-color:var(--green-b)}
   .mp-player.winner{border-color:var(--green-b);background:var(--panel);box-shadow:0 0 0 3px var(--focus)}
@@ -716,6 +737,13 @@
   .mp-player .mp-attempts{flex:none;color:var(--muted);font-family:"Fredoka","Outfit",sans-serif;font-size:13px}
   .mp-player.solved .mp-attempts{color:var(--green);font-weight:600}
   .mp-player.gaveup .mp-attempts{font-style:italic}
+  /* an opponent's last 3 guesses, exact/partial/wrong counts only (see mpRecentHTML) —
+     flex-basis:100% forces it onto its own row below the name/tag/attempts line above,
+     each guess a smaller echo of the .scores/.score styling the full history uses. */
+  .mp-player .mp-recent{flex-basis:100%;display:flex;gap:8px;flex-wrap:wrap}
+  .mp-player .mp-recent .scores{gap:4px}
+  .mp-player .mp-recent .score{padding:3px 8px 3px 6px;font-size:11.5px;gap:4px}
+  .mp-player .mp-recent .dot{width:8px;height:8px}
 
   @media (max-width:560px){
     .mp-modal{padding:20px 16px}
@@ -861,11 +889,11 @@
 
     <!-- Race: same code, everyone guesses at once, first exact match wins -->
     <div class="mp-screen hide" id="mpRace">
-      <div class="status">
-        <div class="pill"><span class="pill-ic" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></span><span id="mpRaceModePill"></span></div>
-        <div class="pill"><span class="pill-ic" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span id="mpTriesLabel">Your tries</span> <b id="mpMyAttempts">0</b></div>
-      </div>
       <div class="mp-players" id="mpRacePlayers"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn btn-give" id="mpGiveUpBtn" type="button" style="flex:1">Give up</button>
+        <button class="btn" id="mpLeaveRaceBtn" type="button" style="flex:1">Leave race</button>
+      </div>
       <div class="divider"></div>
       <div class="legend">
         <span><i class="dot g"></i> <span id="mpLegendExact">right &amp; in place</span></span>
@@ -873,13 +901,6 @@
         <span><i class="dot r"></i> <span id="mpLegendWrong">not in the code</span></span>
       </div>
       <div class="history" id="mpHistory"><div class="empty">No guesses yet.</div></div>
-      <div class="divider"></div>
-      <div class="inputs" id="mpInputs"></div>
-      <div class="msg" id="mpMsg"></div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn btn-give" id="mpGiveUpBtn" type="button" style="flex:1">Give up</button>
-        <button class="btn" id="mpLeaveRaceBtn" type="button" style="flex:1">Leave race</button>
-      </div>
     </div>
 
     <!-- Result: reveal + standings -->
@@ -903,11 +924,16 @@
      Sibling of #fx/#overlay below for the same reason: fixed-position layers live at the
      body level, not inside the centred/padded .app column. Current guess on top, then the
      keyboard, then the footer — see .dock for how the three share (and cap) that bottom
-     space. -->
+     space. #dockGuess/#mpDockGuess are mutually exclusive (single-player vs a live race —
+     see mpIsRacing()), never both visible at once. -->
 <div class="dock" id="dock">
   <div class="dock-guess" id="dockGuess">
     <div class="inputs" id="inputs"></div>
     <div class="msg" id="msg"></div>
+  </div>
+  <div class="dock-guess" id="mpDockGuess">
+    <div class="inputs" id="mpInputs"></div>
+    <div class="msg" id="mpMsg"></div>
   </div>
   <div class="keyboard" id="keyboard"></div>
   <footer id="footer">
@@ -1412,9 +1438,23 @@ function clearInputs(){
    handler above does its usual step-back-and-clear.
    Word mode's letters are laid out AZERTY, not QWERTY — a deliberate choice, not a mode/
    language switch (word mode is English-only regardless, see WORD_MODE_LANG). Number mode
-   is a 3×4 phone-dialpad grid (see .kb-grid in <style>) rather than one long digit row. */
+   is a 3×4 phone-dialpad grid (see .kb-grid in <style>) rather than one long digit row.
+
+   Shared with multiplayer's race screen too — see mpPressChar/mpPressDelete/mpPressEnter
+   and mpCharStatus further down (MULTIPLAYER section): there's only ever one physical
+   keyboard on screen, so every function here that needs to know which game it's driving
+   branches on mpIsRacing() rather than duplicating the whole keyboard. */
 const kbEl = $("keyboard");
 const KB_ROWS_WORD = ["AZERTYUIOP", "QSDFGHJKLM", "WXCVBN"];
+
+// True once a multiplayer race is actually in progress and its screen is the one showing —
+// the only time the keyboard should drive #mpInputs instead of single-player's #inputs.
+// References MP, defined later in the MULTIPLAYER section below — safe because this is only
+// ever called after that top-level const has run (function declarations are hoisted, but
+// MP itself isn't touched until the first real keypress/render, well after page load).
+function mpIsRacing(){
+  return document.body.classList.contains("mp-active") && !!MP.room && MP.room.status === "playing";
+}
 
 function targetCell(){
   const cells = [...inputsEl.children];
@@ -1446,8 +1486,12 @@ function pressEnter(){
 function keyBtn(ch){ return `<button type="button" class="kb-key" data-ch="${ch}">${ch}</button>`; }
 const enterBtn = extra => `<button type="button" class="kb-key ${extra} enter" data-action="enter" aria-label="${t("checkGuess")}">${ICONS.enter}</button>`;
 const delBtn = extra => `<button type="button" class="kb-key ${extra} del" data-action="del" aria-label="${t("deleteChar")}">${ICONS.backspace}</button>`;
+// mode is S.mode normally, but MP.room.mode while a race is up (see mpIsRacing()) — the
+// race screen has no length/difficulty of its own to key off, just num vs word, same as
+// single-player.
 function renderKeyboard(){
-  if (S.mode === "num"){
+  const mode = mpIsRacing() ? MP.room.mode : S.mode;
+  if (mode === "num"){
     const grid = "123456789".split("").map(keyBtn).join("") + delBtn("") + keyBtn("0") + enterBtn("");
     kbEl.innerHTML = `<div class="kb-grid">${grid}</div>`;
   } else {
@@ -1464,12 +1508,20 @@ function renderKeyboard(){
 kbEl.addEventListener("click", e => {
   const btn = e.target.closest(".kb-key");
   if (!btn) return;
+  if (mpIsRacing()){
+    if (btn.dataset.action === "enter") mpPressEnter();
+    else if (btn.dataset.action === "del") mpPressDelete();
+    else mpPressChar(btn.dataset.ch);
+    return;
+  }
   if (btn.dataset.action === "enter") pressEnter();
   else if (btn.dataset.action === "del") pressDelete();
   else pressChar(btn.dataset.ch);
 });
 function updateDockHeights(){
-  document.documentElement.style.setProperty("--guess-h", $("dockGuess").offsetHeight + "px");
+  // #dockGuess (single-player) and #mpDockGuess (a live race) are mutually exclusive — see
+  // mpIsRacing() — so exactly one of these two offsetHeights is ever nonzero at a time.
+  document.documentElement.style.setProperty("--guess-h", ($("dockGuess").offsetHeight + $("mpDockGuess").offsetHeight) + "px");
   document.documentElement.style.setProperty("--kb-h", kbEl.offsetHeight + "px");
   document.documentElement.style.setProperty("--footer-h", $("footer").offsetHeight + "px");
 }
@@ -1487,8 +1539,9 @@ function charStatus(ch){
   return marked ? "green" : "";
 }
 function refreshKeyboardMarks(){
+  const statusOf = mpIsRacing() ? mpCharStatus : charStatus; // mpCharStatus: see MULTIPLAYER section
   kbEl.querySelectorAll(".kb-key[data-ch]").forEach(btn => {
-    const status = charStatus(btn.dataset.ch.toLowerCase());
+    const status = statusOf(btn.dataset.ch.toLowerCase());
     btn.classList.toggle("kb-red", status === "red");
     btn.classList.toggle("kb-green", status === "green");
   });
@@ -1857,6 +1910,19 @@ function setMenu(open){
   menuBtn.setAttribute("aria-expanded", String(open));
 }
 menuBtn.addEventListener("click", () => setMenu(!settingsPanel.classList.contains("open")));
+// Click-away close: anywhere outside the panel and its own toggle button (which already
+// handles itself above — including it here would just reopen what it closes) collapses the
+// menu, same "click outside closes it" convention as the custom selects (see openPopup
+// further down) — which is also why a click inside .cselect-popup doesn't count as "outside"
+// either: it's one of this panel's own dropdowns, just rendered into document.body so fixed
+// positioning can escape the settings strip's own scroll clipping (see openPopup's comment).
+// Bubble-phase document listener, so it always runs after whatever else that click also did
+// (a keyboard key, another header button, …).
+document.addEventListener("click", e => {
+  if (!settingsPanel.classList.contains("open")) return;
+  if (settingsPanel.contains(e.target) || menuBtn.contains(e.target) || e.target.closest(".cselect-popup")) return;
+  setMenu(false);
+});
 
 /* ---------------- Room button & view switching ---------------- */
 // Two top-level sections sharing one main-content slot: Play (the board) and Room
@@ -1968,6 +2034,9 @@ function mpEsc(s){ return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":
 function mpShow(screen){
   ["mpAuth","mpHome","mpLobby","mpRace","mpResult"].forEach(id => mp$(id).classList.toggle("hide", id !== screen));
   if (screen !== "mpResult") mp$("mpOverlay").classList.remove("win", "lose");
+  // drives the shared on-screen keyboard's visibility (see body.mp-active:not(.mp-racing)
+  // #keyboard in <style>) — it only makes sense while the race screen is actually up.
+  document.body.classList.toggle("mp-racing", screen === "mpRace");
 }
 
 // Swaps the page between the single-player board and the multiplayer race section — an
@@ -1979,6 +2048,10 @@ function mpSetOpen(open){
   document.body.classList.toggle("mp-active", open);
   $("roomBtn").classList.toggle("on", open);
   updateRoomBtnLabel();
+  // Closing: the shared on-screen keyboard (see mpIsRacing()) may still be holding whatever
+  // a race last built it as (num grid or AZERTY) — resync it to single-player's own S.mode
+  // now that it's about to become the visible one again.
+  if (!open) renderKeyboard();
 }
 
 function mpOpen(){
@@ -2166,6 +2239,7 @@ function mpOnState(data){
   if (enteringRace){ MP.myGuesses = []; MP.redChars = new Set(); }
   mpRenderFromRoom();
   if (enteringRace){
+    renderKeyboard(); // fresh race: (re)builds the shared keyboard for this round's mode, all marks neutral
     const el = mp$("mpInputs");
     [...el.children].forEach(c => { c.value = ""; delete c.dataset.localMark; c.classList.remove(...MARK_CLASSES); });
     if (el.children[0]) el.children[0].focus();
@@ -2235,7 +2309,7 @@ function mpBuildRaceInputs(){
   for (let i = 0; i < room.len; i++){
     const inp = document.createElement("input");
     inp.className = "cell"; inp.maxLength = 1; inp.autocomplete = "off"; inp.spellcheck = false;
-    if (room.mode === "num") inp.inputMode = "numeric";
+    inp.inputMode = "none"; // the on-screen keyboard now covers racing too — see renderInputs() above for why
     inp.addEventListener("input", () => {
       const ok = room.mode === "num" ? /^[0-9]$/ : mpLetterRegex(room.lang);
       inp.value = ok.test(inp.value) ? inp.value.toUpperCase() : "";
@@ -2277,33 +2351,54 @@ function mpSizeRaceCells(){
   el.style.setProperty("--cell-fs", Math.max(14, Math.round(w * (26 / 52))) + "px");
   el.style.setProperty("--cell-gap", gap + "px");
 }
-addEventListener("resize", () => { if (MP.room && MP.room.status === "playing") mpSizeRaceCells(); });
+// explicit updateDockHeights() call rather than relying on this listener's registration
+// order relative to updateDockHeights()'s own resize listener above — #mpInputs' resized
+// cells need to already be in the DOM before --guess-h re-measures #mpDockGuess.
+addEventListener("resize", () => { if (MP.room && MP.room.status === "playing") { mpSizeRaceCells(); updateDockHeights(); } });
 
 function mpPlayerStatus(p){
   if (p.gaveUp) return "gave up";
   const tries = `${p.attempts} ${p.attempts === 1 ? "try" : "tries"}`;
   return p.solved ? `#${p.rank} · ${tries}` : tries;
 }
+// Everyone else's last 3 guesses, as exact/partial/wrong counts only (see broadcastState in
+// worker/src/room.js) — never the actual letters/digits they typed. Lets you gauge how close
+// an opponent is without seeing their guess, same spirit as the attempt counter but sharper.
+// Skipped for "you": your own guesses are already shown in full, with marks, in #mpHistory.
+function mpRecentHTML(p){
+  if (p.id === MP.me.id || !p.results || !p.results.length) return "";
+  return `<div class="mp-recent">${p.results.map(r => `
+    <div class="scores">
+      <div class="score g"><i class="dot g"></i>${r.exact}</div>
+      <div class="score a"><i class="dot a"></i>${r.partial}</div>
+      <div class="score r"><i class="dot r"></i>${r.wrong}</div>
+    </div>`).join("")}</div>`;
+}
+// mirrors setMsg() (single-player, near updateLeft): #mpMsg now lives in the fixed dock too
+// (see #mpDockGuess), so every place that sets it needs the same re-sync afterwards.
+function mpSetMsg(msg, cls=""){
+  mp$("mpMsg").textContent = msg; mp$("mpMsg").className = "msg " + cls;
+  updateDockHeights();
+}
 function mpRenderRace(){
   const room = MP.room;
   mpBuildRaceInputs();
   mpSizeRaceCells();
-  mp$("mpRaceModePill").textContent = room.mode === "num" ? t("digitsSuffix", room.len) : `${room.len}-letter word`;
   const me = room.players.find(p => p.id === MP.me.id);
-  mp$("mpMyAttempts").textContent = me ? me.attempts : 0;
   mp$("mpRacePlayers").innerHTML = room.players.map(p => `
     <div class="mp-player${p.solved ? " solved" : ""}${p.gaveUp ? " gaveup" : ""}${p.id === MP.me.id ? " me" : ""}">
       <span class="mp-name">${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
       ${p.id === room.hostId ? '<span class="mp-tag">host</span>' : ""}
       ${mpWinsTag(p)}
       <span class="mp-attempts">${mpPlayerStatus(p)}</span>
+      ${mpRecentHTML(p)}
     </div>`).join("");
   mpRenderRaceHistory();
   const meDone = !!(me && (me.solved || me.gaveUp));
   toggleMpInputs(meDone);
   mp$("mpGiveUpBtn").disabled = meDone;
-  if (me && me.gaveUp){ mp$("mpMsg").textContent = "You gave up — waiting for the race to finish…"; mp$("mpMsg").className = "msg"; }
-  else if (me && me.solved){ mp$("mpMsg").textContent = "Solved! Waiting for the race to finish…"; mp$("mpMsg").className = "msg ok"; }
+  if (me && me.gaveUp) mpSetMsg("You gave up — waiting for the race to finish…");
+  else if (me && me.solved) mpSetMsg("Solved! Waiting for the race to finish…", "ok");
 }
 function toggleMpInputs(disabled){ [...mp$("mpInputs").children].forEach(i => i.disabled = disabled); }
 function mpGuessRowHTML(g, gi){
@@ -2354,6 +2449,16 @@ function mpRefreshAllMarks(){
     const g = MP.myGuesses[+chip.dataset.gi];
     mpPaintBox(chip, chip.dataset.ch, g ? (g.marks[+chip.dataset.ci] || "") : "");
   });
+  refreshKeyboardMarks(); // the shared on-screen keyboard's key colours (see charStatus/mpCharStatus above)
+}
+// mpCharStatus mirrors charStatus (single-player, near renderKeyboard) exactly, just reading
+// MP.redChars/#mpInputs/#mpHistory instead of S.redChars/#inputs/#history.
+function mpCharStatus(ch){
+  if (MP.redChars.has(ch)) return "red";
+  const greenOrAmber = el => el.classList.contains("mark-g") || el.classList.contains("mark-a");
+  const marked = [...mp$("mpInputs").children].some(c => c.value.toLowerCase() === ch && greenOrAmber(c))
+    || [...mp$("mpHistory").querySelectorAll(".chip[data-ch]")].some(c => c.dataset.ch === ch && greenOrAmber(c));
+  return marked ? "green" : "";
 }
 function mpCycleBoxMark(ch, getLocal, setLocal){
   const isRed = MP.redChars.has(ch);
@@ -2384,6 +2489,33 @@ mp$("mpHistory").addEventListener("click", e => {
   const ci = +chip.dataset.ci;
   mpCycleBoxMark(chip.dataset.ch, () => g.marks[ci] || "", m => { g.marks[ci] = m; });
 });
+/* ---- On-screen keyboard routing (see mpIsRacing()/renderKeyboard near the single-player
+   keyboard) — mpPressChar/mpPressDelete mirror pressChar/pressDelete exactly, just aimed
+   at #mpInputs; a disabled cell (see toggleMpInputs, after you've solved/given up) is a
+   silent no-op rather than a guard in every caller. ---- */
+function mpTargetCell(){
+  const cells = [...mp$("mpInputs").children];
+  return cells.includes(document.activeElement) ? document.activeElement : (cells.find(c => !c.value) || cells[cells.length - 1]);
+}
+function mpPressChar(ch){
+  const cell = mpTargetCell();
+  if (!cell || cell.disabled) return;
+  cell.focus();
+  cell.value = ch;
+  cell.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function mpPressDelete(){
+  const cell = mpTargetCell();
+  if (!cell || cell.disabled) return;
+  if (cell.value){
+    cell.value = "";
+    delete cell.dataset.localMark;
+    cell.classList.remove(...MARK_CLASSES);
+  } else {
+    cell.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true, cancelable: true }));
+  }
+}
+function mpPressEnter(){ mpSubmitGuess(); } // already guards on room/status/solved itself
 function mpSubmitGuess(){
   const room = MP.room; if (!room || room.status !== "playing") return;
   const me = room.players.find(p => p.id === MP.me.id);
@@ -2391,10 +2523,10 @@ function mpSubmitGuess(){
   const el = mp$("mpInputs");
   const guess = [...el.children].map(i => i.value).join("").toLowerCase();
   if (guess.length !== room.len){
-    mp$("mpMsg").textContent = "Fill all the boxes."; mp$("mpMsg").className = "msg err";
+    mpSetMsg("Fill all the boxes.", "err");
     return;
   }
-  mp$("mpMsg").textContent = "";
+  mpSetMsg("");
   if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "guess", value: guess }));
 }
 // Concede the round — stops your guessing but doesn't reveal the secret; you just wait
