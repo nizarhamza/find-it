@@ -101,10 +101,13 @@
     --icon-play:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z'/%3E%3C/svg%3E");
     --icon-flag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528'/%3E%3C/svg%3E");
     --icon-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
-    /* the on-screen keyboard's actual rendered height (fixed-docked to the viewport bottom —
-       see .keyboard below), kept in sync from JS (updateKbHeight()) so .app can reserve
-       exactly enough bottom space for it instead of guessing a pixel value. */
+    /* the current-guess row's, keyboard's and footer's actual rendered heights (all
+       fixed-docked to the viewport bottom, stacked inside #dock — see .dock below), kept
+       in sync from JS (updateDockHeights()) so .app can reserve exactly enough bottom
+       space for them instead of guessing a pixel value. */
+    --guess-h:0px;
     --kb-h:0px;
+    --footer-h:0px;
   }
 
   *{box-sizing:border-box}
@@ -112,7 +115,12 @@
      whatever font-size/width the surrounding button or pill already defines, no per-icon
      tuning needed; the vertical-align nudge lines the glyph up with adjacent text baselines. */
   .icon{width:1em;height:1em;display:inline-block;flex:none;vertical-align:-.125em}
-  html,body{height:100%}
+  /* overscroll-behavior:contain stops a drag that starts on the fixed bottom dock (keyboard/
+     footer) from being treated as a page-level overscroll once the (now much shorter)
+     scrollable area above it is at the top — without this, Chrome for Android reads that as
+     "pull to refresh" and reloads the whole page, silently resetting the open settings menu
+     (and everything else) along with it. */
+  html,body{height:100%;overscroll-behavior-y:contain}
   body{
     margin:0;
     background:var(--bg);
@@ -123,12 +131,14 @@
   }
   .shell{display:flex;flex-direction:column;min-height:100vh}
 
-  .app{flex:1;min-width:0;display:flex;justify-content:center;padding:26px 16px calc(26px + env(safe-area-inset-bottom));position:relative}
-  /* the on-screen keyboard is fixed to the viewport bottom (see .keyboard below), so the
-     board needs matching reserved space or its own last rows/footer would sit underneath
-     it. Multiplayer's race screen has no on-screen keyboard of its own, so it keeps the
-     plain base padding above. */
-  body:not(.mp-active) .app{padding-bottom:calc(var(--kb-h) + 26px + env(safe-area-inset-bottom))}
+  .app{flex:1;min-width:0;display:flex;justify-content:center;padding:26px 16px calc(26px + var(--footer-h) + env(safe-area-inset-bottom));position:relative}
+  /* the current-guess row, keyboard and footer are all fixed to the viewport bottom,
+     stacked inside #dock (see .dock below), so the board needs matching reserved space or
+     its own last rows would sit underneath them. The footer shows in every mode, so its
+     height is always reserved above (base rule); the guess row + keyboard only show
+     outside multiplayer's race screen (which has its own inline inputs and no on-screen
+     keyboard), so their height is added on top of that just for single-player. */
+  body:not(.mp-active) .app{padding-bottom:calc(var(--guess-h) + var(--kb-h) + var(--footer-h) + 26px + env(safe-area-inset-bottom))}
   .app::before{
     content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
     background:
@@ -382,13 +392,35 @@
   .msg.err{color:var(--red)}
   .msg.ok{color:var(--green)}
 
-  /* ---- on-screen keyboard ----
-     An in-app alternative to the phone's own keyboard (see renderKeyboard() near the
-     bottom of the script), docked to the viewport bottom rather than sitting inline in the
-     card — always in thumb reach, at a fixed spot, instead of scrolling away with a long
-     guess history. Centred to the same width as .app-inner so its edges line up with the
-     card above it. Always left-to-right regardless of page direction: Enter/Delete stay
-     pinned to the right (Enter bottom-right-most) in every language — word mode is
+  /* ---- current-guess + keyboard + footer dock ----
+     All three fixed to the viewport bottom and stacked in #dock: the current guess on top,
+     the keyboard below it, the footer at the very bottom (see markup near #dock) — always
+     in thumb reach, at a fixed spot, instead of scrolling away with a long guess history.
+     flex-direction:column with the guess row and footer set to flex:none keeps them always
+     shown at full size; the keyboard (flex:1, min-height:0) absorbs any shrinkage first,
+     scrolling internally rather than pushing the others off-screen — so all three together
+     never claim more than 2/3 of the viewport height, even on a short viewport (e.g. a
+     landscape phone). */
+  .dock{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;
+    display:flex;flex-direction:column;
+    max-width:660px;margin:0 auto;
+    max-height:66.67vh; /* 2/3 of the viewport, shared between the guess row + keyboard + footer */
+  }
+  /* the boxes you're actively typing into, docked right above the keyboard instead of
+     scrolling away with the history above it (see #inputs/.cell further down for the box
+     styling itself). */
+  .dock-guess{
+    flex:none;background:var(--bg);border-top:1px solid var(--line);padding:14px 16px 4px;
+  }
+  #inputs{margin:0 0 8px}
+  #msg{padding-bottom:6px}
+  #msg:empty{display:none} /* setMsg("") clears it to no child text at all, so :empty catches exactly that — no reserved blank strip between the boxes and the keyboard when there's nothing to say */
+  /* An in-app alternative to the phone's own keyboard (see renderKeyboard() near the
+     bottom of the script). Centred to the same width as .app-inner so its edges line up
+     with the card above it. Always left-to-right regardless of page direction: Delete
+     stays pinned to the right of the top row (next to P, mirroring a physical keyboard's
+     backspace) and Enter to the right of the bottom row, in every language — word mode is
      English-only anyway (see WORD_MODE_LANG), so this only ever matters for the number
      pad, and a numeric keypad reading right-to-left would be confusing regardless of UI
      language (phone dialpads never mirror for RTL either).
@@ -396,9 +428,13 @@
      and the same solid mark-g/mark-r colours as the guess boxes for the red/green key
      states (see refreshKeyboardMarks()). */
   .keyboard{
-    position:fixed;left:0;right:0;bottom:0;z-index:30;direction:ltr;
+    direction:ltr;flex:1;min-height:0;overflow-y:auto;
     display:flex;flex-direction:column;align-items:center;gap:7px;
-    max-width:660px;margin:0 auto;
+    background:var(--bg);border-top:1px solid var(--line);
+    padding:10px 16px;
+  }
+  footer{
+    flex:none;text-align:center;color:var(--muted);font-size:12px;line-height:1.7;
     background:var(--bg);border-top:1px solid var(--line);
     padding:10px 16px calc(10px + env(safe-area-inset-bottom));
   }
@@ -428,9 +464,10 @@
   /* number mode: a phone-dialpad-style 3×4 grid instead of one long digit row — 1-9 plus a
      last row of Delete/0/Enter, same corner convention as a phone or ATM keypad. Capped
      narrower than the full card width and centred so it actually reads as a dialpad
-     instead of 3 very wide, short keys. */
+     instead of 3 very wide, short keys. Keys keep the word keyboard's own height (no
+     aspect-ratio/square-cell sizing here) so switching between number and word mode
+     doesn't change how much of the screen the keyboard claims. */
   .kb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:280px}
-  .kb-grid .kb-key{aspect-ratio:1;height:auto}
 
   .legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-bottom:12px}
   .divider{border-top:1px solid var(--line);margin:16px 0}
@@ -561,12 +598,11 @@
   .modal .hint{margin:14px 0 0;font-size:12px;color:var(--muted)}
 
   .hide{display:none !important}
-  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:14px;line-height:1.7}
 
   /* ============ MOBILE ============ */
   @media (max-width:560px){
-    .app{padding:18px 12px calc(18px + env(safe-area-inset-bottom))}
-    body:not(.mp-active) .app{padding-bottom:calc(var(--kb-h) + 18px + env(safe-area-inset-bottom))}
+    .app{padding:18px 12px calc(18px + var(--footer-h) + env(safe-area-inset-bottom))}
+    body:not(.mp-active) .app{padding-bottom:calc(var(--guess-h) + var(--kb-h) + var(--footer-h) + 18px + env(safe-area-inset-bottom))}
     h1{font-size:clamp(26px,8vw,34px)}
     .sub{font-size:13px}
     .theme-btn{width:38px;height:38px;font-size:17px}
@@ -575,7 +611,8 @@
     .room-btn .room-btn-ic{font-size:14px}
     .card{padding:14px;border-radius:18px}
     .kb-key{height:42px;font-size:13px;border-radius:9px}
-    .keyboard{gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+    .keyboard{gap:6px;padding:8px 10px}
+    footer{padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
     .kb-row{gap:4px}
     .kb-grid{max-width:230px;gap:6px}
 
@@ -633,6 +670,7 @@
   body.mp-active #playCard,
   body.mp-active #settingsPanel,
   body.mp-active #menuBtn,
+  body.mp-active #dockGuess,
   body.mp-active #keyboard{display:none}
   .mp-screen h2{margin-top:0;font-family:"Fredoka","Outfit",sans-serif;font-weight:600;letter-spacing:-.02em;color:var(--text)}
   #mpResult{text-align:center}
@@ -765,9 +803,6 @@
     </div>
 
     <div class="divider"></div>
-
-    <div class="inputs" id="inputs"></div>
-    <div class="msg" id="msg"></div>
   </div>
 
   <!-- Multiplayer race: an inline section of the page (not a popup) — shown in place of
@@ -860,19 +895,26 @@
     </div>
   </div>
 
-  <footer id="footer">
-    Type to auto-advance · Backspace to go back · Enter to check<br>
-    Word guesses are checked against a dictionary.
-  </footer>
-
   </div>
   </div>
 </div>
 
-<!-- Fixed to the viewport bottom, not nested in .app — see .keyboard in <style> above.
+<!-- Fixed to the viewport bottom, not nested in .app — see .dock in <style> above.
      Sibling of #fx/#overlay below for the same reason: fixed-position layers live at the
-     body level, not inside the centred/padded .app column. -->
-<div class="keyboard" id="keyboard"></div>
+     body level, not inside the centred/padded .app column. Current guess on top, then the
+     keyboard, then the footer — see .dock for how the three share (and cap) that bottom
+     space. -->
+<div class="dock" id="dock">
+  <div class="dock-guess" id="dockGuess">
+    <div class="inputs" id="inputs"></div>
+    <div class="msg" id="msg"></div>
+  </div>
+  <div class="keyboard" id="keyboard"></div>
+  <footer id="footer">
+    Type to auto-advance · Backspace to go back · Enter to check<br>
+    Word guesses are checked against a dictionary.
+  </footer>
+</div>
 
 <canvas id="fx" class="hide"></canvas>
 
@@ -1200,7 +1242,10 @@ async function newGame(){
 }
 
 function updateLeft(){ leftEl.textContent = S.max === Infinity ? "∞" : Math.max(0, S.max - S.guesses.length); }
-function setMsg(msg, cls=""){ msgEl.textContent = msg; msgEl.className = "msg " + cls; }
+function setMsg(msg, cls=""){
+  msgEl.textContent = msg; msgEl.className = "msg " + cls;
+  updateDockHeights(); // the message can wrap to a 2nd line, changing #dockGuess's height
+}
 
 /* ---------------- Input boxes ---------------- */
 /* Shrinks the cells (and their gap) just enough that S.len of them always
@@ -1407,13 +1452,14 @@ function renderKeyboard(){
     kbEl.innerHTML = `<div class="kb-grid">${grid}</div>`;
   } else {
     kbEl.innerHTML = KB_ROWS_WORD.map((line, i) => {
+      const first = i === 0;
       const last = i === KB_ROWS_WORD.length - 1;
       const keys = [...line].map(keyBtn).join("");
-      return `<div class="kb-row">${keys}${last ? delBtn("wide") : ""}${last ? enterBtn("wide") : ""}</div>`;
+      return `<div class="kb-row">${keys}${first ? delBtn("wide") : ""}${last ? enterBtn("wide") : ""}</div>`;
     }).join("");
   }
   refreshKeyboardMarks();
-  updateKbHeight();
+  updateDockHeights();
 }
 kbEl.addEventListener("click", e => {
   const btn = e.target.closest(".kb-key");
@@ -1422,10 +1468,12 @@ kbEl.addEventListener("click", e => {
   else if (btn.dataset.action === "del") pressDelete();
   else pressChar(btn.dataset.ch);
 });
-function updateKbHeight(){
+function updateDockHeights(){
+  document.documentElement.style.setProperty("--guess-h", $("dockGuess").offsetHeight + "px");
   document.documentElement.style.setProperty("--kb-h", kbEl.offsetHeight + "px");
+  document.documentElement.style.setProperty("--footer-h", $("footer").offsetHeight + "px");
 }
-addEventListener("resize", updateKbHeight);
+addEventListener("resize", updateDockHeights);
 
 // Reflects the same global deductions the guess boxes already show (see cycleBoxMark
 // above) onto the matching keyboard key: red once a character is proven absent anywhere,
