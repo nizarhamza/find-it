@@ -101,6 +101,13 @@
     --icon-play:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z'/%3E%3C/svg%3E");
     --icon-flag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528'/%3E%3C/svg%3E");
     --icon-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+    /* the current-guess row's, keyboard's and footer's actual rendered heights (all
+       fixed-docked to the viewport bottom, stacked inside #dock — see .dock below), kept
+       in sync from JS (updateDockHeights()) so .app can reserve exactly enough bottom
+       space for them instead of guessing a pixel value. */
+    --guess-h:0px;
+    --kb-h:0px;
+    --footer-h:0px;
   }
 
   *{box-sizing:border-box}
@@ -108,7 +115,12 @@
      whatever font-size/width the surrounding button or pill already defines, no per-icon
      tuning needed; the vertical-align nudge lines the glyph up with adjacent text baselines. */
   .icon{width:1em;height:1em;display:inline-block;flex:none;vertical-align:-.125em}
-  html,body{height:100%}
+  /* overscroll-behavior:contain stops a drag that starts on the fixed bottom dock (keyboard/
+     footer) from being treated as a page-level overscroll once the (now much shorter)
+     scrollable area above it is at the top — without this, Chrome for Android reads that as
+     "pull to refresh" and reloads the whole page, silently resetting the open settings menu
+     (and everything else) along with it. */
+  html,body{height:100%;overscroll-behavior-y:contain}
   body{
     margin:0;
     background:var(--bg);
@@ -119,7 +131,14 @@
   }
   .shell{display:flex;flex-direction:column;min-height:100vh}
 
-  .app{flex:1;min-width:0;display:flex;justify-content:center;padding:26px 16px calc(26px + env(safe-area-inset-bottom));position:relative}
+  .app{flex:1;min-width:0;display:flex;justify-content:center;padding:26px 16px calc(26px + var(--footer-h) + env(safe-area-inset-bottom));position:relative}
+  /* the current-guess row, keyboard and footer are all fixed to the viewport bottom,
+     stacked inside #dock (see .dock below), so the board needs matching reserved space or
+     its own last rows would sit underneath them. The footer shows in every mode, so its
+     height is always reserved above (base rule); the guess row + keyboard only show
+     outside multiplayer's race screen (which has its own inline inputs and no on-screen
+     keyboard), so their height is added on top of that just for single-player. */
+  body:not(.mp-active) .app{padding-bottom:calc(var(--guess-h) + var(--kb-h) + var(--footer-h) + 26px + env(safe-area-inset-bottom))}
   .app::before{
     content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
     background:
@@ -373,6 +392,83 @@
   .msg.err{color:var(--red)}
   .msg.ok{color:var(--green)}
 
+  /* ---- current-guess + keyboard + footer dock ----
+     All three fixed to the viewport bottom and stacked in #dock: the current guess on top,
+     the keyboard below it, the footer at the very bottom (see markup near #dock) — always
+     in thumb reach, at a fixed spot, instead of scrolling away with a long guess history.
+     flex-direction:column with the guess row and footer set to flex:none keeps them always
+     shown at full size; the keyboard (flex:1, min-height:0) absorbs any shrinkage first,
+     scrolling internally rather than pushing the others off-screen — so all three together
+     never claim more than 2/3 of the viewport height, even on a short viewport (e.g. a
+     landscape phone). */
+  .dock{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;
+    display:flex;flex-direction:column;
+    max-width:660px;margin:0 auto;
+    max-height:66.67vh; /* 2/3 of the viewport, shared between the guess row + keyboard + footer */
+  }
+  /* the boxes you're actively typing into, docked right above the keyboard instead of
+     scrolling away with the history above it (see #inputs/.cell further down for the box
+     styling itself). */
+  .dock-guess{
+    flex:none;background:var(--bg);border-top:1px solid var(--line);padding:14px 16px 4px;
+  }
+  #inputs{margin:0 0 8px}
+  #msg{padding-bottom:6px}
+  #msg:empty{display:none} /* setMsg("") clears it to no child text at all, so :empty catches exactly that — no reserved blank strip between the boxes and the keyboard when there's nothing to say */
+  /* An in-app alternative to the phone's own keyboard (see renderKeyboard() near the
+     bottom of the script). Centred to the same width as .app-inner so its edges line up
+     with the card above it. Always left-to-right regardless of page direction: Delete
+     stays pinned to the right of the top row (next to P, mirroring a physical keyboard's
+     backspace) and Enter to the right of the bottom row, in every language — word mode is
+     English-only anyway (see WORD_MODE_LANG), so this only ever matters for the number
+     pad, and a numeric keypad reading right-to-left would be confusing regardless of UI
+     language (phone dialpads never mirror for RTL either).
+     Reuses .cell's raised "keycap" look (a bottom box-shadow ledge, not a real shadow),
+     and the same solid mark-g/mark-r colours as the guess boxes for the red/green key
+     states (see refreshKeyboardMarks()). */
+  .keyboard{
+    direction:ltr;flex:1;min-height:0;overflow-y:auto;
+    display:flex;flex-direction:column;align-items:center;gap:7px;
+    background:var(--bg);border-top:1px solid var(--line);
+    padding:10px 16px;
+  }
+  footer{
+    flex:none;text-align:center;color:var(--muted);font-size:12px;line-height:1.7;
+    background:var(--bg);border-top:1px solid var(--line);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  }
+  .kb-row{display:flex;gap:6px;width:100%}
+  .kb-key{
+    flex:1;min-width:0;height:46px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:10px;background:var(--raise);border:1px solid var(--line);color:var(--text);
+    font-family:inherit;font-size:14px;font-weight:600;text-transform:uppercase;
+    box-shadow:0 3px 0 var(--line);cursor:pointer;
+    transition:transform .08s ease,box-shadow .08s ease,background .2s,color .2s,border-color .2s;
+  }
+  .kb-key:hover{border-color:var(--line-strong)}
+  .kb-key:active{transform:translateY(3px);box-shadow:0 0 0 var(--line)}
+  .kb-key:focus-visible{outline:none;box-shadow:0 0 0 4px var(--focus)}
+  .kb-key.wide{flex:1.6}
+  .kb-key.wide svg{width:18px;height:18px}
+  .kb-key.enter{background:var(--accent);color:var(--on-accent);border-color:transparent;box-shadow:0 3px 0 var(--green-b)}
+  .kb-key.enter:active{box-shadow:0 0 0 var(--green-b)}
+  .kb-key.del:hover{color:var(--red);border-color:var(--red-b)}
+  /* characters the manual clue marks (see cycleBoxMark above) already say something about:
+     red mirrors a box proven absent, green covers both exact- and wrong-place marks — the
+     keyboard only needs "ruled out" vs "somewhere in the code", not which box said so. */
+  .kb-key.kb-green{background:var(--mark-g-bg);border-color:var(--mark-g-line);color:var(--mark-g-text);box-shadow:0 3px 0 var(--mark-g-line)}
+  .kb-key.kb-red{background:var(--mark-r-bg);border-color:var(--mark-r-line);color:var(--mark-r-text);box-shadow:0 3px 0 var(--mark-r-line)}
+
+  /* number mode: a phone-dialpad-style 3×4 grid instead of one long digit row — 1-9 plus a
+     last row of Delete/0/Enter, same corner convention as a phone or ATM keypad. Capped
+     narrower than the full card width and centred so it actually reads as a dialpad
+     instead of 3 very wide, short keys. Keys keep the word keyboard's own height (no
+     aspect-ratio/square-cell sizing here) so switching between number and word mode
+     doesn't change how much of the screen the keyboard claims. */
+  .kb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:280px}
+
   .legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-bottom:12px}
   .divider{border-top:1px solid var(--line);margin:16px 0}
   .legend span{display:flex;align-items:center;gap:7px}
@@ -502,11 +598,11 @@
   .modal .hint{margin:14px 0 0;font-size:12px;color:var(--muted)}
 
   .hide{display:none !important}
-  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:14px;line-height:1.7}
 
   /* ============ MOBILE ============ */
   @media (max-width:560px){
-    .app{padding:18px 12px calc(18px + env(safe-area-inset-bottom))}
+    .app{padding:18px 12px calc(18px + var(--footer-h) + env(safe-area-inset-bottom))}
+    body:not(.mp-active) .app{padding-bottom:calc(var(--guess-h) + var(--kb-h) + var(--footer-h) + 18px + env(safe-area-inset-bottom))}
     h1{font-size:clamp(26px,8vw,34px)}
     .sub{font-size:13px}
     .theme-btn{width:38px;height:38px;font-size:17px}
@@ -514,6 +610,11 @@
     .room-btn{height:38px;padding:0 13px;font-size:13px}
     .room-btn .room-btn-ic{font-size:14px}
     .card{padding:14px;border-radius:18px}
+    .kb-key{height:42px;font-size:13px;border-radius:9px}
+    .keyboard{gap:6px;padding:8px 10px}
+    footer{padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+    .kb-row{gap:4px}
+    .kb-grid{max-width:230px;gap:6px}
 
     /* multiplayer's create-room settings row (just 2 selects, no scroll strip) still
        benefits from a compact 2-column grid on narrow phones. */
@@ -568,7 +669,9 @@
   body.mp-active #banner,
   body.mp-active #playCard,
   body.mp-active #settingsPanel,
-  body.mp-active #menuBtn{display:none}
+  body.mp-active #menuBtn,
+  body.mp-active #dockGuess,
+  body.mp-active #keyboard{display:none}
   .mp-screen h2{margin-top:0;font-family:"Fredoka","Outfit",sans-serif;font-weight:600;letter-spacing:-.02em;color:var(--text)}
   #mpResult{text-align:center}
   .mp-sub{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0 0 16px}
@@ -700,9 +803,6 @@
     </div>
 
     <div class="divider"></div>
-
-    <div class="inputs" id="inputs"></div>
-    <div class="msg" id="msg"></div>
   </div>
 
   <!-- Multiplayer race: an inline section of the page (not a popup) — shown in place of
@@ -795,13 +895,25 @@
     </div>
   </div>
 
+  </div>
+  </div>
+</div>
+
+<!-- Fixed to the viewport bottom, not nested in .app — see .dock in <style> above.
+     Sibling of #fx/#overlay below for the same reason: fixed-position layers live at the
+     body level, not inside the centred/padded .app column. Current guess on top, then the
+     keyboard, then the footer — see .dock for how the three share (and cap) that bottom
+     space. -->
+<div class="dock" id="dock">
+  <div class="dock-guess" id="dockGuess">
+    <div class="inputs" id="inputs"></div>
+    <div class="msg" id="msg"></div>
+  </div>
+  <div class="keyboard" id="keyboard"></div>
   <footer id="footer">
     Type to auto-advance · Backspace to go back · Enter to check<br>
     Word guesses are checked against a dictionary.
   </footer>
-
-  </div>
-  </div>
 </div>
 
 <canvas id="fx" class="hide"></canvas>
@@ -836,6 +948,8 @@ const ICONS = {
   trash: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
   trophy: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14.66V17a1 1 0 0 1-1 1 2 2 0 0 0-2 2v2"/><path d="M14 14.66V17a1 1 0 0 0 1 1 2 2 0 0 1 2 2v2"/><path d="M17.916 10H19.5A2.5 2.5 0 0 0 22 7.5V5a1 1 0 0 0-1-1h-3"/><path d="M4 22h16"/><path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/><path d="M6.084 10H4.5A2.5 2.5 0 0 1 2 7.5V5a1 1 0 0 1 1-1h3"/></svg>',
   partyPopper: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/></svg>',
+  enter: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>',
+  backspace: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>',
 };
 
 /* ---------------- Word mode ----------------
@@ -933,6 +1047,7 @@ en: {
   playAgainHint: "Press Enter to play again · Esc to review the board",
   triesWord: n => n === 1 ? "try" : "tries",
   clearColors: "Clear colours",
+  checkGuess: "Check guess", deleteChar: "Delete",
 },
 fr: {
   dir: "ltr",
@@ -976,6 +1091,7 @@ fr: {
   playAgainHint: "Entrée pour rejouer · Échap pour revoir la grille",
   triesWord: n => n === 1 ? "essai" : "essais",
   clearColors: "Effacer les couleurs",
+  checkGuess: "Valider l'essai", deleteChar: "Supprimer",
 },
 ar: {
   dir: "rtl",
@@ -1019,6 +1135,7 @@ ar: {
   playAgainHint: "Enter للعب مرة أخرى · Esc لمراجعة اللوحة",
   triesWord: n => n === 1 ? "محاولة واحدة" : "محاولات",
   clearColors: "مسح الألوان",
+  checkGuess: "تحقق من المحاولة", deleteChar: "حذف",
 }
 };
 function t(key, ...args){
@@ -1089,6 +1206,7 @@ async function newGame(){
   renderHistory();
   updateLeft();
   renderInputs();
+  renderKeyboard(); // only depends on S.mode, but this is the one spot every mode/lang/round change already passes through
 
   if (S.mode === "num"){
     S.checking = false;
@@ -1124,7 +1242,10 @@ async function newGame(){
 }
 
 function updateLeft(){ leftEl.textContent = S.max === Infinity ? "∞" : Math.max(0, S.max - S.guesses.length); }
-function setMsg(msg, cls=""){ msgEl.textContent = msg; msgEl.className = "msg " + cls; }
+function setMsg(msg, cls=""){
+  msgEl.textContent = msg; msgEl.className = "msg " + cls;
+  updateDockHeights(); // the message can wrap to a 2nd line, changing #dockGuess's height
+}
 
 /* ---------------- Input boxes ---------------- */
 /* Shrinks the cells (and their gap) just enough that S.len of them always
@@ -1183,6 +1304,7 @@ function refreshAllMarks(){
     const g = S.guesses[+chip.dataset.gi];
     paintBox(chip, chip.dataset.ch, g ? (g.marks[+chip.dataset.ci] || "") : "");
   });
+  refreshKeyboardMarks(); // the on-screen keyboard's key colours are derived from the same marks
 }
 // cycles ONE box's mark. getLocal/setLocal read & write that box's own green/amber
 // state; reaching or leaving red updates S.redChars instead (global).
@@ -1227,7 +1349,12 @@ function renderInputs(){
     inp.maxLength = 1;
     inp.autocomplete = "off";
     inp.spellcheck = false;
-    if (S.mode === "num"){ inp.inputMode = "numeric"; inp.pattern = "[0-9]"; }
+    // the on-screen keyboard below is meant to replace the phone's own keyboard, not sit
+    // under it — inputMode "none" hints mobile browsers to skip their own virtual keyboard
+    // on focus. Doesn't affect physical/Bluetooth keyboards or the "type anywhere" handler,
+    // which both dispatch real key events regardless of inputMode.
+    inp.inputMode = "none";
+    if (S.mode === "num") inp.pattern = "[0-9]";
     inp.addEventListener("input", () => {
       const ok = S.mode === "num" ? /^[0-9]$/ : WORD_CHAR_REGEX;
       inp.value = ok.test(inp.value) ? inp.value.toUpperCase() : "";
@@ -1272,6 +1399,99 @@ const readGuess = () => [...inputsEl.children].map(i => i.value).join("").toLowe
 function clearInputs(){
   [...inputsEl.children].forEach(i => { i.value = ""; delete i.dataset.localMark; i.classList.remove(...MARK_CLASSES); });
   inputsEl.children[0].focus();
+}
+
+/* ---------------- On-screen keyboard ----------------
+   inputMode "none" (see renderInputs above) keeps the phone's own keyboard from popping
+   up under this one. Tapping a key here re-creates exactly what typing that key physically
+   would do — set the target cell's value and fire a real "input" event so the cell's own
+   listener above runs its usual validation/uppercasing/mark-reset/auto-advance — rather
+   than duplicating that logic. Delete is the one exception: there's no real keystroke for
+   the browser to turn into an actual deletion, so it clears a filled cell directly, or —
+   for an already-empty cell — dispatches a real "keydown" so the cell's own Backspace
+   handler above does its usual step-back-and-clear.
+   Word mode's letters are laid out AZERTY, not QWERTY — a deliberate choice, not a mode/
+   language switch (word mode is English-only regardless, see WORD_MODE_LANG). Number mode
+   is a 3×4 phone-dialpad grid (see .kb-grid in <style>) rather than one long digit row. */
+const kbEl = $("keyboard");
+const KB_ROWS_WORD = ["AZERTYUIOP", "QSDFGHJKLM", "WXCVBN"];
+
+function targetCell(){
+  const cells = [...inputsEl.children];
+  return cells.includes(document.activeElement) ? document.activeElement : (cells.find(c => !c.value) || cells[cells.length - 1]);
+}
+function pressChar(ch){
+  if (S.over || S.checking) return;
+  const cell = targetCell();
+  cell.focus();
+  cell.value = ch;
+  cell.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function pressDelete(){
+  if (S.over || S.checking) return;
+  const cell = targetCell();
+  cell.focus();
+  if (cell.value){
+    cell.value = "";
+    delete cell.dataset.localMark;
+    cell.classList.remove(...MARK_CLASSES);
+  } else {
+    cell.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true, cancelable: true }));
+  }
+}
+function pressEnter(){
+  if (S.checking) return;
+  S.over ? newGame() : submit();
+}
+function keyBtn(ch){ return `<button type="button" class="kb-key" data-ch="${ch}">${ch}</button>`; }
+const enterBtn = extra => `<button type="button" class="kb-key ${extra} enter" data-action="enter" aria-label="${t("checkGuess")}">${ICONS.enter}</button>`;
+const delBtn = extra => `<button type="button" class="kb-key ${extra} del" data-action="del" aria-label="${t("deleteChar")}">${ICONS.backspace}</button>`;
+function renderKeyboard(){
+  if (S.mode === "num"){
+    const grid = "123456789".split("").map(keyBtn).join("") + delBtn("") + keyBtn("0") + enterBtn("");
+    kbEl.innerHTML = `<div class="kb-grid">${grid}</div>`;
+  } else {
+    kbEl.innerHTML = KB_ROWS_WORD.map((line, i) => {
+      const first = i === 0;
+      const last = i === KB_ROWS_WORD.length - 1;
+      const keys = [...line].map(keyBtn).join("");
+      return `<div class="kb-row">${keys}${first ? delBtn("wide") : ""}${last ? enterBtn("wide") : ""}</div>`;
+    }).join("");
+  }
+  refreshKeyboardMarks();
+  updateDockHeights();
+}
+kbEl.addEventListener("click", e => {
+  const btn = e.target.closest(".kb-key");
+  if (!btn) return;
+  if (btn.dataset.action === "enter") pressEnter();
+  else if (btn.dataset.action === "del") pressDelete();
+  else pressChar(btn.dataset.ch);
+});
+function updateDockHeights(){
+  document.documentElement.style.setProperty("--guess-h", $("dockGuess").offsetHeight + "px");
+  document.documentElement.style.setProperty("--kb-h", kbEl.offsetHeight + "px");
+  document.documentElement.style.setProperty("--footer-h", $("footer").offsetHeight + "px");
+}
+addEventListener("resize", updateDockHeights);
+
+// Reflects the same global deductions the guess boxes already show (see cycleBoxMark
+// above) onto the matching keyboard key: red once a character is proven absent anywhere,
+// green once any box has it marked exact or misplaced anywhere in this round's history —
+// the keyboard only needs "ruled out" vs "somewhere in the code", not which box said so.
+function charStatus(ch){
+  if (S.redChars.has(ch)) return "red";
+  const greenOrAmber = el => el.classList.contains("mark-g") || el.classList.contains("mark-a");
+  const marked = [...inputsEl.children].some(c => c.value.toLowerCase() === ch && greenOrAmber(c))
+    || [...histEl.querySelectorAll(".chip[data-ch]")].some(c => c.dataset.ch === ch && greenOrAmber(c));
+  return marked ? "green" : "";
+}
+function refreshKeyboardMarks(){
+  kbEl.querySelectorAll(".kb-key[data-ch]").forEach(btn => {
+    const status = charStatus(btn.dataset.ch.toLowerCase());
+    btn.classList.toggle("kb-red", status === "red");
+    btn.classList.toggle("kb-green", status === "green");
+  });
 }
 
 /* ---------------- Word lookup (any real word, verified live — see WORD_MODE_LANG above) ---------------- */
