@@ -2068,8 +2068,10 @@ function mpOpen(){
   } else if (MP.room){
     mpRenderFromRoom(); // reopening mid-game — just re-show whatever screen matches current state
   } else {
-    mpRenderHome();
+    // show before render: mpRenderHome() sizes #mpJoinInputs off its live clientWidth (see
+    // mpSizeJoinCells), which reads 0 while the screen's still display:none
     mpShow("mpHome");
+    mpRenderHome();
   }
 }
 function mpClose(){ mpSetOpen(false); } // hides only; the socket/game keeps running
@@ -2087,8 +2089,8 @@ function mpSubmitName(){
   MP.me.nickname = name;
   mpSaveIdentity();
   mp$("mpAuthMsg").classList.add("hide");
+  mpShow("mpHome"); // before render — see the comment on the same pair in mpOpen()
   mpRenderHome();
-  mpShow("mpHome");
 }
 mp$("mpAuthBtn").addEventListener("click", mpSubmitName);
 mp$("mpNameInput").addEventListener("keydown", e => { if (e.key === "Enter") mpSubmitName(); });
@@ -2139,7 +2141,27 @@ function mpRenderHome(){
   mp$("mpHomeName").textContent = MP.me.nickname;
   mpSyncSettingsUI();
   mpBuildCodeInputs();
+  mpSizeJoinCells();
 }
+// Fixed at 6 digits (unlike mpSizeRaceCells, where the room picks the length), but needs
+// the exact same shrink-to-fit treatment — it was just never given it, so on a narrow phone
+// the 6 boxes sat at their 52px default width regardless of how little room was actually
+// available and ran off the edge of the card instead of shrinking to match.
+function mpSizeJoinCells(){
+  const el = mp$("mpJoinInputs");
+  const avail = el.clientWidth; if (!avail) return;
+  const n = 6;
+  const MAX_W = 52, MAX_H = 60, MAX_GAP = 8, MIN_W = 30, MIN_GAP = 4;
+  let gap = MAX_GAP, w = (avail - (n - 1) * gap) / n;
+  if (w > MAX_W) w = MAX_W;
+  else if (w < MIN_W){ gap = MIN_GAP; w = Math.max(MIN_W, Math.min(MAX_W, (avail - (n - 1) * gap) / n)); }
+  w = Math.floor(w);
+  el.style.setProperty("--cell-w", w + "px");
+  el.style.setProperty("--cell-h", Math.round(w * (MAX_H / MAX_W)) + "px");
+  el.style.setProperty("--cell-fs", Math.max(14, Math.round(w * (26 / 52))) + "px");
+  el.style.setProperty("--cell-gap", gap + "px");
+}
+addEventListener("resize", mpSizeJoinCells);
 function mpBuildCodeInputs(){
   const el = mp$("mpJoinInputs");
   el.innerHTML = "";
@@ -2295,8 +2317,8 @@ function mpLeaveRoom(){
   if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify({ type: "leave" }));
   if (MP.ws){ try { MP.ws.close(); } catch {} }
   MP.ws = null; MP.room = null; MP.code = null; MP.myGuesses = []; MP.redChars = new Set();
+  mpShow("mpHome"); // before render — see the comment on the same pair in mpOpen()
   mpRenderHome();
-  mpShow("mpHome");
 }
 
 /* ---- Race ---- */
