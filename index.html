@@ -1177,6 +1177,17 @@ const S = { mode:"num", len:4, max:10, secret:"", guesses:[], over:false,
             redChars: new Set() }; // characters proven absent from the code — shared by every box showing that character
 
 const $ = id => document.getElementById(id);
+// A freshly-appended history row can sit lower on the page than the fixed dock's reserved
+// space accounts for right up until the browser reflows — #history/#mpHistory's own
+// scrollTop already tracks to ITS bottom (see renderHistory/appendHistoryRow/
+// mpRenderRaceHistory), but that only moves content within its own fixed-height box; if the
+// box itself currently sits partway down a tall page, its tail can still be hidden behind
+// the keyboard until the page itself is scrolled further. .app's padding-bottom is already
+// sized to leave exactly enough room for the dock, so scrolling the page to its own natural
+// max is what actually reveals a just-submitted guess instead of leaving it half-covered.
+function scrollPageToBottom(){
+  window.scrollTo(0, document.documentElement.scrollHeight);
+}
 const inputsEl = $("inputs"), histEl = $("history"), msgEl = $("msg"),
       bannerEl = $("banner"), leftEl = $("left"), modePill = $("modePill"),
       lenSel = $("lenSel"), diffSel = $("diffSel"), langSel = $("langSel");
@@ -1800,6 +1811,7 @@ function renderHistory(){
   histEl.innerHTML = S.guesses.map((g, gi) => guessRowHTML(g, gi)).join("");
   histBuiltCount = S.guesses.length;
   histEl.scrollTop = histEl.scrollHeight;
+  scrollPageToBottom();
   refreshAllMarks();
 }
 // Appends just the newest guess instead of re-rendering the whole list, so existing rows
@@ -1809,6 +1821,7 @@ function appendHistoryRow(){
   for (let gi = histBuiltCount; gi < S.guesses.length; gi++) histEl.insertAdjacentHTML("beforeend", guessRowHTML(S.guesses[gi], gi));
   histBuiltCount = S.guesses.length;
   histEl.scrollTop = histEl.scrollHeight;
+  scrollPageToBottom();
   refreshAllMarks();
 }
 
@@ -2456,7 +2469,11 @@ function mpRenderRaceHistory(){
   }
   if (mpHistBuiltCount === 0) el.innerHTML = ""; // drop the "no guesses yet" placeholder
   for (let gi = mpHistBuiltCount; gi < MP.myGuesses.length; gi++) el.insertAdjacentHTML("beforeend", mpGuessRowHTML(MP.myGuesses[gi], gi));
-  if (mpHistBuiltCount !== MP.myGuesses.length){ mpHistBuiltCount = MP.myGuesses.length; el.scrollTop = el.scrollHeight; }
+  if (mpHistBuiltCount !== MP.myGuesses.length){
+    mpHistBuiltCount = MP.myGuesses.length;
+    el.scrollTop = el.scrollHeight;
+    scrollPageToBottom(); // see the comment on this function, near single-player's $ above
+  }
   mpRefreshAllMarks();
 }
 
