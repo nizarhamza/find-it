@@ -733,14 +733,14 @@
   .mp-player .mp-attempts{flex:none;color:var(--muted);font-family:"Fredoka","Outfit",sans-serif;font-size:13px}
   .mp-player.solved .mp-attempts{color:var(--green);font-weight:600}
   .mp-player.gaveup .mp-attempts{font-style:italic}
-  /* an opponent's last 3 guesses, exact/partial/wrong counts only (see mpRecentHTML) — sits
-     inline with the name/tag/tries above (flex:none so it never gets squeezed away to
+  /* an opponent's most recent guess, exact/partial/wrong counts only (see mpRecentHTML) —
+     sits inline with the name/tag/tries above (flex:none so it never gets squeezed away to
      nothing); .mp-name's own flex:1 + ellipsis is what actually gives it room, shrinking
      the name first. .mp-player's flex-wrap:wrap above is just the last-resort fallback for
-     a long name + 3 guesses on a narrow phone — everyday case is one line.
-     Bare dot+number per guess, not the full .score pill the guess history uses — three
-     pills' worth of background/border/padding, ×3 guesses, is simply too wide to ever sit
-     on the same line as the name/tag/tries, which is the whole point here. */
+     a long name on a narrow phone — everyday case is one line.
+     Bare dot+number, not the full .score pill the guess history uses — that's three pills'
+     worth of background/border/padding just for this one guess, wider than it needs to be
+     to still sit on the same line as the name/tag/tries. */
   .mp-player .mp-recent{display:flex;gap:9px;flex:none}
   .mp-player .mp-recent .mp-mini{display:flex;gap:6px}
   .mp-player .mp-recent .mp-mini b{
@@ -2385,21 +2385,21 @@ function mpPlayerStatus(p){
   const tries = `${p.attempts} ${p.attempts === 1 ? "try" : "tries"}`;
   return p.solved ? `#${p.rank} · ${tries}` : tries;
 }
-// Everyone else's last 3 guesses, as exact/partial/wrong counts only (see broadcastState in
-// worker/src/room.js) — never the actual letters/digits they typed. Lets you gauge how close
-// an opponent is without seeing their guess, same spirit as the attempt counter but sharper.
-// Skipped for "you": your own guesses are already shown in full, with marks, in #mpHistory.
+// Everyone else's most recent guess, as exact/partial/wrong counts only (see broadcastState
+// in worker/src/room.js) — never the actual letters/digits they typed. Lets you gauge how
+// close an opponent is without seeing their guess, same spirit as the attempt counter but
+// sharper. Skipped for "you": your own guesses are already shown in full, with marks, in
+// #mpHistory.
 function mpRecentHTML(p){
-  if (p.id === MP.me.id || !p.results || !p.results.length) return "";
-  // bare dot+number, no .score pill chrome — the full pill (background/border/padding ×3
-  // per guess) is too wide to ever share the row with the name/tag/tries, which is the
-  // point (see .mp-recent below: this is meant to stay on one line).
-  return `<div class="mp-recent">${p.results.map(r => `
-    <span class="mp-mini">
+  if (p.id === MP.me.id || !p.lastResult) return "";
+  const r = p.lastResult;
+  // bare dot+number, no .score pill chrome — sits inline with the name/tag/tries (see
+  // .mp-recent below), same idea as the full history's .scores just far more compact.
+  return `<div class="mp-recent"><span class="mp-mini">
       <b><i class="dot g"></i>${r.exact}</b>
       <b><i class="dot a"></i>${r.partial}</b>
       <b><i class="dot r"></i>${r.wrong}</b>
-    </span>`).join("")}</div>`;
+    </span></div>`;
 }
 // mirrors setMsg() (single-player, near updateLeft): #mpMsg now lives in the fixed dock too
 // (see #mpDockGuess), so every place that sets it needs the same re-sync afterwards.

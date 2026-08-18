@@ -49,7 +49,7 @@ export class Room {
       startedAt: null,
       finishedAt: null,
       players: {
-        [hostId]: { id: hostId, nickname: String(hostName).slice(0, 24), attempts: 0, solved: false, gaveUp: false, wins: 0, finishedAt: null, rank: null, results: [] },
+        [hostId]: { id: hostId, nickname: String(hostName).slice(0, 24), attempts: 0, solved: false, gaveUp: false, wins: 0, finishedAt: null, rank: null, lastResult: null },
       },
     };
     await this.state.storage.put("room", room);
@@ -75,7 +75,7 @@ export class Room {
     }
 
     if (isNewPlayer) {
-      room.players[playerId] = { id: playerId, nickname, attempts: 0, solved: false, gaveUp: false, wins: 0, finishedAt: null, rank: null, results: [] };
+      room.players[playerId] = { id: playerId, nickname, attempts: 0, solved: false, gaveUp: false, wins: 0, finishedAt: null, rank: null, lastResult: null };
     } else {
       room.players[playerId].nickname = nickname; // allow a rename to stick on reconnect
     }
@@ -114,7 +114,7 @@ export class Room {
       room.finishedAt = null;
       for (const p of Object.values(room.players)) {
         // wins carries over — it's the room's running score across rounds, not this round's state
-        p.attempts = 0; p.solved = false; p.gaveUp = false; p.finishedAt = null; p.rank = null; p.results = [];
+        p.attempts = 0; p.solved = false; p.gaveUp = false; p.finishedAt = null; p.rank = null; p.lastResult = null;
       }
       await this.state.storage.put("room", room);
       return this.broadcastState();
@@ -146,8 +146,8 @@ export class Room {
       player.attempts++;
       // exact/partial/wrong counts only — never the guess itself — so everyone else's row
       // can show how close a player's getting without seeing what they actually typed (see
-      // broadcastState below); capped at 3 since that's all the client ever shows.
-      player.results = [...(player.results || []), result].slice(-3);
+      // broadcastState below).
+      player.lastResult = result;
       ws.send(JSON.stringify({ type: "result", guess, result }));
 
       if (result.exact === room.len) {
@@ -201,7 +201,7 @@ export class Room {
       secret: room.status === "finished" ? room.secret : undefined,
       players: Object.values(room.players)
         .sort((a, b) => (a.rank || 99) - (b.rank || 99))
-        .map(p => ({ id: p.id, nickname: p.nickname, attempts: p.attempts, solved: p.solved, gaveUp: p.gaveUp, wins: p.wins || 0, rank: p.rank, results: p.results || [] })),
+        .map(p => ({ id: p.id, nickname: p.nickname, attempts: p.attempts, solved: p.solved, gaveUp: p.gaveUp, wins: p.wins || 0, rank: p.rank, lastResult: p.lastResult || null })),
     });
     for (const ws of this.state.getWebSockets()) {
       try { ws.send(payload); } catch { /* socket gone — it'll drop off on next broadcast */ }
