@@ -776,7 +776,7 @@
         <span class="room-btn-ic" id="roomBtnIcon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg></span><span id="roomBtnText">Room</span>
       </button>
     </div>
-    <div class="sub" id="subtitle">Crack the hidden code — numbers or words.</div>
+    <div class="sub" id="subtitle">Crack the hidden code. Numbers or words.</div>
   </header>
 
   <div class="collapse" id="settingsPanel">
@@ -911,6 +911,7 @@
       <h2 id="mpResultTitle"></h2>
       <p id="mpResultText"></p>
       <div class="reveal" id="mpReveal"></div>
+      <p class="definition hide" id="mpDefinition"></p>
       <div class="mp-players" id="mpStandings"></div>
       <button class="btn primary hide" id="mpRematchBtn" type="button" style="width:100%">Play again</button>
       <p class="mp-hint hide" id="mpRematchHint">Waiting for the host to start a new round…</p>
@@ -1035,7 +1036,7 @@ if (typeof module !== "undefined") module.exports = { score };
 const I18N = {
 en: {
   dir: "ltr",
-  subtitle: "Crack the hidden code — numbers or words.",
+  subtitle: "Crack the hidden code. Numbers or words.",
   menuTitle: "Game menu", menuAria: "Toggle mode & settings menu",
   themeToLight: "Switch to light mode", themeToDark: "Switch to dark mode", themeAria: "Switch colour theme",
   navRoom: "Room", navPlay: "Play",
@@ -2605,6 +2606,17 @@ function mpRenderResult(){
   mp$("mpReveal").innerHTML = room.secret
     ? [...room.secret].map((c, i) => `<div class="chip" style="animation-delay:${i * 70}ms">${mpEsc(c.toUpperCase())}</div>`).join("")
     : "";
+  const defEl = mp$("mpDefinition");
+  defEl.textContent = "";
+  defEl.classList.add("hide");
+  if (room.mode === "word" && room.secret){
+    const word = room.secret;
+    fetchDefinition(room.lang, word).then(def => {
+      if (!def || !MP.room || MP.room.secret !== word) return; // stale (rematch/new round started meanwhile)
+      defEl.textContent = def;
+      defEl.classList.remove("hide");
+    });
+  }
   mp$("mpStandings").innerHTML = room.players.map(p => `
     <div class="mp-player${p.solved ? " solved" : ""}${p.gaveUp ? " gaveup" : ""}${p.id === room.winnerId ? " winner" : ""}${p.id === MP.me.id ? " me" : ""}">
       <span class="mp-name">${p.solved ? "#" + p.rank + " " : ""}${mpEsc(p.nickname)}${p.id === MP.me.id ? " (you)" : ""}</span>
