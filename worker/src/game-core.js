@@ -6,10 +6,35 @@
 
 const WORD_REGEX = /^[a-z]+$/; // only plain a–z entries count — Datamuse's corpus includes phrases, hyphenations, etc.
 
+// A word made of one letter repeated ("aaaa", "bbbb", "mmmm", ...) is essentially never a
+// real English word — Datamuse's "spelled like" wildcard surfaces these anyway via
+// coincidental initialism entries (e.g. "aaaa" = "Amateur Athletic Association of America",
+// "cccc" = a string of unrelated colleges' initials) or elongated-spelling entries (e.g.
+// "mmmm" = "Elongated form of mmm"), none of which are genuine vocabulary. Mirrors index.html.
+const REPEATED_CHAR_REGEX = /^(.)\1*$/;
+
 // Wiktionary's own phrasing for dialectal/eye-dialect respellings of another word (e.g.
 // "dat" defs as "...Pronunciation spelling of that."), consistent enough across entries
 // to match on the text directly — Datamuse exposes no dedicated flag for this.
 const PRON_SPELLING_REGEX = /\b(?:pronunciation spelling|eye dialect spelling|nonstandard spelling) of\b/i;
+
+// Datamuse's md=d defs are "<tag>\t<text>" where <tag> is the entry's Wiktionary part of
+// speech (n, v, adj, ...). A slice of entries — almost always a mismatched/punctuated page
+// title (e.g. "Grrr!" for a lowercase "grrr" query) — come back with an UPPERCASE tag
+// instead (e.g. "N") and their "definitions" are encyclopedia/trivia blurbs (ad campaigns,
+// albums, films), not real senses of the word. No dedicated Datamuse flag for this, so
+// detect it by shape, same approach as PRON_SPELLING_REGEX above. Mirrors index.html.
+const UPPERCASE_TAG_REGEX = /^[A-Z]+\t/;
+
+// Wiktionary groups related senses under a shared lead-in line ending in a colon (e.g. "Of a
+// person or an animal:" followed by indented sub-senses like "Well-behaved..."). Datamuse
+// flattens the whole page, so these lead-ins come back as standalone "defs" even though
+// they're not complete definitions on their own. Mirrors index.html.
+function isUsableDef(d){
+  if (UPPERCASE_TAG_REGEX.test(d)) return false;
+  const text = (d.includes("\t") ? d.split("\t")[1] : d).trim();
+  return !!text && !/:\s*$/.test(text);
+}
 const LEVELS = ["easy", "medium", "hard", "hell"]; // most-common quarter of the pool -> rarest quarter
 
 /* ---------------- Core scoring (Mastermind rules) ---------------- */
@@ -54,6 +79,7 @@ async function fetchWordPool(len){
     const byWord = new Map();
     for (const h of hits){
       if (h.word.length !== len || !WORD_REGEX.test(h.word)) continue;
+      if (REPEATED_CHAR_REGEX.test(h.word)) continue;
       if (!Array.isArray(h.defs) || !h.defs.length) continue;
       if (byWord.has(h.word)) continue;
       const tags = Array.isArray(h.tags) ? h.tags : [];
@@ -82,7 +108,9 @@ async function getWordPool(len){
 }
 
 function isRealWordEntry(entry){
-  return !entry.prop && !entry.defs.some(d => PRON_SPELLING_REGEX.test(d));
+  return !entry.prop
+    && entry.defs.some(isUsableDef)
+    && !entry.defs.some(d => PRON_SPELLING_REGEX.test(d));
 }
 
 // Slices a freq-sorted pool into quarters: easy = commonest quarter, hell = rarest.

@@ -521,23 +521,27 @@
   .empty{text-align:center;color:var(--muted);font-size:13px;padding:22px 0}
 
   .guess{
-    display:flex;align-items:center;gap:10px;
+    display:flex;flex-direction:column;gap:8px;
     background:var(--raise);border:1px solid var(--line);border-radius:16px;padding:8px 10px;
     animation:pop .25s ease;
   }
   @keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .guess-top{display:flex;align-items:center;gap:10px}
   .guess .no{color:var(--muted);font-family:"Fredoka","Outfit",sans-serif;font-size:12px;width:22px;text-align:center;flex:none}
   /* nowrap + min-width:0 so chips shrink to fit the row instead of wrapping to a 2nd line;
      the chip rule below lets each one shrink with them (a single glyph has room to spare) */
   .guess .chars{display:flex;gap:6px;flex:1;flex-wrap:nowrap;min-width:0}
   .guess .chars .chip{flex-shrink:1;min-width:0}
-  .row-clear{
+  .row-clear,.row-info{
     flex:none;width:26px;height:26px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;
     background:transparent;border:1px solid transparent;color:var(--muted);
     font-size:12px;cursor:pointer;transition:.15s;
   }
   .row-clear:hover{color:var(--red);border-color:var(--red-b);background:var(--sunk)}
+  .row-info:hover{color:var(--accent);border-color:var(--accent);background:var(--sunk)}
+  /* per-row definition text, shown/hidden via the shared .hide class when .row-info is clicked */
+  .guess-def{font-size:13px;font-style:italic;color:var(--muted);line-height:1.5;padding:0 2px}
   .chip{
     width:34px;height:36px;display:flex;align-items:center;justify-content:center;
     background:var(--sunk);border:1px solid var(--line-strong);border-radius:10px;
@@ -702,7 +706,7 @@
     .chip{width:30px;height:33px;font-size:15px;border-radius:9px}
     .scores{gap:5px}
     .score{padding:5px 9px 5px 7px;font-size:13px}
-    .row-clear{width:22px;height:22px;font-size:11px}
+    .row-clear,.row-info{width:22px;height:22px;font-size:11px}
 
     .overlay{padding:14px}
     .modal{padding:28px 20px;border-radius:22px}
@@ -1044,6 +1048,7 @@ const ICONS = {
   x: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
   flag: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg>',
   trash: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  info: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
   trophy: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14.66V17a1 1 0 0 1-1 1 2 2 0 0 0-2 2v2"/><path d="M14 14.66V17a1 1 0 0 0 1 1 2 2 0 0 1 2 2v2"/><path d="M17.916 10H19.5A2.5 2.5 0 0 0 22 7.5V5a1 1 0 0 0-1-1h-3"/><path d="M4 22h16"/><path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/><path d="M6.084 10H4.5A2.5 2.5 0 0 1 2 7.5V5a1 1 0 0 1 1-1h3"/></svg>',
   partyPopper: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/></svg>',
   enter: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>',
@@ -1060,10 +1065,36 @@ const WORD_MODE_LANG = "en";
 const WORD_LENGTHS = [3, 4, 5, 6, 7, 8];
 const WORD_REGEX = /^[a-z]+$/; // only plain a–z entries count — Datamuse's corpus includes phrases, hyphenations, etc.
 
+// A word made of one letter repeated ("aaaa", "bbbb", "mmmm", ...) is essentially never a
+// real English word — Datamuse's "spelled like" wildcard surfaces these anyway via
+// coincidental initialism entries (e.g. "aaaa" = "Amateur Athletic Association of America",
+// "cccc" = a string of unrelated colleges' initials) or elongated-spelling entries (e.g.
+// "mmmm" = "Elongated form of mmm"), none of which are genuine vocabulary.
+const REPEATED_CHAR_REGEX = /^(.)\1*$/;
+
 // Wiktionary's own phrasing for dialectal/eye-dialect respellings of another word (e.g.
 // "dat" defs as "...Pronunciation spelling of that."), consistent enough across entries
 // to match on the text directly — Datamuse exposes no dedicated flag for this.
 const PRON_SPELLING_REGEX = /\b(?:pronunciation spelling|eye dialect spelling|nonstandard spelling) of\b/i;
+
+// Datamuse's md=d defs are "<tag>\t<text>" where <tag> is the entry's Wiktionary part of
+// speech (n, v, adj, ...). A slice of entries — almost always a mismatched/punctuated page
+// title (e.g. "Grrr!" for a lowercase "grrr" query) — come back with an UPPERCASE tag
+// instead (e.g. "N") and their "definitions" are encyclopedia/trivia blurbs (ad campaigns,
+// albums, films), not real senses of the word. No dedicated Datamuse flag for this, so
+// detect it by shape, same approach as PRON_SPELLING_REGEX above.
+const UPPERCASE_TAG_REGEX = /^[A-Z]+\t/;
+
+// Wiktionary groups related senses under a shared lead-in line ending in a colon (e.g. "Of a
+// person or an animal:" followed by indented sub-senses like "Well-behaved..."). Datamuse
+// flattens the whole page, so these lead-ins come back as standalone "defs" even though
+// they're not complete definitions on their own (formatDefinition would otherwise turn one
+// into the nonsensical "Of a person or an animal:.").
+function isUsableDef(d){
+  if (UPPERCASE_TAG_REGEX.test(d)) return false;
+  const text = (d.includes("\t") ? d.split("\t")[1] : d).trim();
+  return !!text && !/:\s*$/.test(text);
+}
 const WORD_LEVELS = ["easy", "medium", "hard", "hell"]; // most-common quarter of the pool -> rarest quarter
 
 // Real dictionary words fetched from Datamuse, cached per "lang:len" so repeat rounds at the
@@ -1087,6 +1118,7 @@ function getWordPool(lang, len){
       const byWord = new Map();
       for (const h of hits){
         if (h.word.length !== len || !WORD_REGEX.test(h.word)) continue;
+        if (REPEATED_CHAR_REGEX.test(h.word)) continue;
         if (!Array.isArray(h.defs) || !h.defs.length) continue;
         if (byWord.has(h.word)) continue;
         const tags = Array.isArray(h.tags) ? h.tags : [];
@@ -1111,7 +1143,9 @@ function getWordPool(lang, len){
 }
 
 function isRealWordEntry(entry){
-  return !entry.prop && !entry.defs.some(d => PRON_SPELLING_REGEX.test(d));
+  return !entry.prop
+    && entry.defs.some(isUsableDef)
+    && !entry.defs.some(d => PRON_SPELLING_REGEX.test(d));
 }
 
 // Slices a freq-sorted pool into quarters: easy = commonest quarter, hell = rarest.
@@ -1197,6 +1231,8 @@ en: {
   playAgainHint: "Press Enter to play again · Esc to review the board",
   triesWord: n => n === 1 ? "try" : "tries",
   clearColors: "Clear colours",
+  wordDefinition: "Show definition",
+  definitionUnavailable: "Definition unavailable.",
   checkGuess: "Check guess", deleteChar: "Delete",
 },
 fr: {
@@ -1243,6 +1279,8 @@ fr: {
   playAgainHint: "Entrée pour rejouer · Échap pour revoir la grille",
   triesWord: n => n === 1 ? "essai" : "essais",
   clearColors: "Effacer les couleurs",
+  wordDefinition: "Afficher la définition",
+  definitionUnavailable: "Définition indisponible.",
   checkGuess: "Valider l'essai", deleteChar: "Supprimer",
 },
 ar: {
@@ -1289,6 +1327,8 @@ ar: {
   playAgainHint: "Enter للعب مرة أخرى · Esc لمراجعة اللوحة",
   triesWord: n => n === 1 ? "محاولة واحدة" : "محاولات",
   clearColors: "مسح الألوان",
+  wordDefinition: "عرض التعريف",
+  definitionUnavailable: "التعريف غير متوفر.",
   checkGuess: "تحقق من المحاولة", deleteChar: "حذف",
 }
 };
@@ -1517,6 +1557,12 @@ histEl.addEventListener("click", e => {
     refreshAllMarks();
     return;
   }
+  const rowInfo = e.target.closest(".row-info");
+  if (rowInfo){
+    const g = S.guesses[+rowInfo.dataset.defGi];
+    if (g) toggleGuessDefinition(rowInfo, S.lang, g.guess, t("definitionUnavailable"));
+    return;
+  }
   const chip = e.target.closest(".chip[data-ch]");
   if (!chip) return;
   const g = S.guesses[+chip.dataset.gi];
@@ -1712,15 +1758,26 @@ const dictCache = new Map(); // "lang:word" -> true | false | undefined(unverifi
 async function isRealWord(lang, word){
   const cacheKey = lang + ":" + word;
   if (dictCache.has(cacheKey)) return dictCache.get(cacheKey);
+  // "aaaa", "mmmm", etc. — see REPEATED_CHAR_REGEX above. Skip the network round trip;
+  // Datamuse would otherwise "confirm" these via coincidental initialism/elongation hits.
+  if (REPEATED_CHAR_REGEX.test(word)) {
+    dictCache.set(cacheKey, false);
+    return false;
+  }
   let result;
   try {
     // Datamuse's "spelled like" endpoint, with definitions attached. Its corpus includes
-    // fuzzy near-matches and corpus-only junk (e.g. "aaaaaa") that aren't real words, so a
-    // hit only counts if the spelling matches exactly AND it carries at least one definition.
+    // fuzzy near-matches and corpus-only junk that aren't real words, so a hit only counts
+    // if the spelling matches exactly AND it carries at least one definition.
     const res = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&max=1&md=d`);
     if (res.ok) {
       const [hit] = await res.json();
-      result = !!(hit && hit.word.toLowerCase() === word && Array.isArray(hit.defs) && hit.defs.length > 0);
+      // A non-empty defs array isn't enough on its own — see isUsableDef above: entries whose
+      // only "definitions" are trivia/encyclopedia blurbs for a mismatched page title (e.g.
+      // "grrr") or bare sense-group headers (e.g. "Of a person or an animal:") aren't real
+      // words, regardless of the real-words-only setting.
+      result = !!(hit && hit.word.toLowerCase() === word && Array.isArray(hit.defs)
+        && hit.defs.some(isUsableDef));
     } else {
       result = undefined; // API returned an error — couldn't verify either way
     }
@@ -1752,13 +1809,45 @@ async function fetchDefinition(lang, word){
     if (res.ok) {
       const [hit] = await res.json();
       if (hit && hit.word.toLowerCase() === word && Array.isArray(hit.defs) && hit.defs.length) {
-        def = formatDefinition(hit.defs[0]);
+        // Prefer a complete, usable sense over Datamuse's raw first entry — see isUsableDef
+        // above. Fall back to any non-junk def, then to defs[0], only if nothing better exists.
+        const best = hit.defs.find(isUsableDef)
+          || hit.defs.find(d => !UPPERCASE_TAG_REGEX.test(d))
+          || hit.defs[0];
+        def = formatDefinition(best);
       }
     }
   } catch { /* offline / API hiccup — leave def as null, reveal just shows the word */ }
   defCache.set(cacheKey, def);
   return def;
 }
+
+// Toggles a single guess row's inline definition line (the .guess-def sibling of the
+// .row-info button that was clicked — see guessRowHTML/mpGuessRowHTML), lazily fetching it
+// through fetchDefinition()/defCache the first time that row is expanded. Shared by both
+// the Play and Room history click-listeners below.
+function toggleGuessDefinition(btn, lang, word, unavailableMsg){
+  const defEl = btn.closest(".guess")?.querySelector(".guess-def");
+  if (!defEl || !word) return;
+  const wasHidden = defEl.classList.contains("hide");
+  defEl.classList.toggle("hide");
+  if (wasHidden && !defEl.dataset.loaded){
+    defEl.textContent = "…";
+    fetchDefinition(lang, word).then(def => {
+      defEl.textContent = def || unavailableMsg;
+      defEl.dataset.loaded = "1";
+    });
+  }
+}
+
+// Any click that isn't on a .row-info button (Play or Room, either one toggles its own row
+// above) closes every currently-open guess definition — same "click outside closes it"
+// convention as the settings panel further down. Bubble-phase on document, so it always
+// runs after the row-info toggle handlers above have already opened/closed their own row.
+document.addEventListener("click", e => {
+  if (e.target.closest(".row-info")) return;
+  document.querySelectorAll(".guess-def:not(.hide)").forEach(el => el.classList.add("hide"));
+});
 
 function toggleInputs(disabled){ [...inputsEl.children].forEach(i => i.disabled = disabled); }
 
@@ -1936,17 +2025,22 @@ const confetti = (() => {
 })();
 
 function guessRowHTML(g, gi){
+  const isWord = S.mode === "word";
   return `
     <div class="guess">
-      <div class="no">${gi+1}</div>
-      <div class="chars">${[...g.guess].map((c, ci) =>
-        `<div class="chip" data-gi="${gi}" data-ci="${ci}" data-ch="${c}">${c}</div>`).join("")}</div>
-      <div class="scores">
-        <div class="score g" title="${t("legendExact")}"><i class="dot g"></i>${g.exact}</div>
-        <div class="score a" title="${t("legendPartial")}"><i class="dot a"></i>${g.partial}</div>
-        <div class="score r" title="${t("legendWrong")}"><i class="dot r"></i>${g.wrong}</div>
+      <div class="guess-top">
+        <div class="no">${gi+1}</div>
+        <div class="chars">${[...g.guess].map((c, ci) =>
+          `<div class="chip" data-gi="${gi}" data-ci="${ci}" data-ch="${c}">${c}</div>`).join("")}</div>
+        ${isWord ? `<button class="row-info" data-def-gi="${gi}" type="button" title="${t("wordDefinition")}" aria-label="${t("wordDefinition")}">${ICONS.info}</button>` : ""}
+        <div class="scores">
+          <div class="score g" title="${t("legendExact")}"><i class="dot g"></i>${g.exact}</div>
+          <div class="score a" title="${t("legendPartial")}"><i class="dot a"></i>${g.partial}</div>
+          <div class="score r" title="${t("legendWrong")}"><i class="dot r"></i>${g.wrong}</div>
+        </div>
+        <button class="row-clear" data-clear-gi="${gi}" type="button" title="${t("clearColors")}" aria-label="${t("clearColors")}">${ICONS.trash}</button>
       </div>
-      <button class="row-clear" data-clear-gi="${gi}" type="button" title="${t("clearColors")}" aria-label="${t("clearColors")}">${ICONS.trash}</button>
+      ${isWord ? `<div class="guess-def hide" data-def-text-gi="${gi}"></div>` : ""}
     </div>`;
 }
 let histBuiltCount = 0; // how many of S.guesses are already rendered as rows in #history
@@ -2614,17 +2708,22 @@ function mpRenderRace(){
 }
 function toggleMpInputs(disabled){ [...mp$("mpInputs").children].forEach(i => i.disabled = disabled); }
 function mpGuessRowHTML(g, gi){
+  const isWord = !!(MP.room && MP.room.mode === "word");
   return `
     <div class="guess">
-      <div class="no">${gi + 1}</div>
-      <div class="chars">${[...g.guess].map((c, ci) =>
-        `<div class="chip" data-gi="${gi}" data-ci="${ci}" data-ch="${c}">${mpEsc(c)}</div>`).join("")}</div>
-      <div class="scores">
-        <div class="score g"><i class="dot g"></i>${g.result.exact}</div>
-        <div class="score a"><i class="dot a"></i>${g.result.partial}</div>
-        <div class="score r"><i class="dot r"></i>${g.result.wrong}</div>
+      <div class="guess-top">
+        <div class="no">${gi + 1}</div>
+        <div class="chars">${[...g.guess].map((c, ci) =>
+          `<div class="chip" data-gi="${gi}" data-ci="${ci}" data-ch="${c}">${mpEsc(c)}</div>`).join("")}</div>
+        ${isWord ? `<button class="row-info" data-def-gi="${gi}" type="button" title="Show definition" aria-label="Show definition">${ICONS.info}</button>` : ""}
+        <div class="scores">
+          <div class="score g"><i class="dot g"></i>${g.result.exact}</div>
+          <div class="score a"><i class="dot a"></i>${g.result.partial}</div>
+          <div class="score r"><i class="dot r"></i>${g.result.wrong}</div>
+        </div>
+        <button class="row-clear" data-clear-gi="${gi}" type="button" title="Clear colours" aria-label="Clear colours">${ICONS.trash}</button>
       </div>
-      <button class="row-clear" data-clear-gi="${gi}" type="button" title="Clear colours" aria-label="Clear colours">${ICONS.trash}</button>
+      ${isWord ? `<div class="guess-def hide" data-def-text-gi="${gi}"></div>` : ""}
     </div>`;
 }
 // mpRenderRace() (and so this) reruns on every room-state broadcast — i.e. every time ANY
@@ -2696,6 +2795,12 @@ mp$("mpHistory").addEventListener("click", e => {
     g.marks.fill("");
     for (const ch of new Set(g.guess)) MP.redChars.delete(ch);
     mpRefreshAllMarks();
+    return;
+  }
+  const rowInfo = e.target.closest(".row-info");
+  if (rowInfo){
+    const g = MP.myGuesses[+rowInfo.dataset.defGi];
+    if (g && MP.room) toggleGuessDefinition(rowInfo, MP.room.lang, g.guess, "Definition unavailable.");
     return;
   }
   const chip = e.target.closest(".chip[data-ch]");
