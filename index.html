@@ -349,6 +349,13 @@
      "Zen — ∞ tries") — the alternative, leaving them at their natural width, is what left a
      dead strip of empty card after the last control on a line that didn't fully fill it. */
   .settings-card .settings-controls > *{flex:1 1 auto}
+  /* level dropdown + real-words-only toggle (single-player card and the multiplayer "create
+     room" screen both use this pairing — see #mpHome below): a nested flex pair so the two
+     wrap as a single unit — the toggle can never land alone on its own full-width line, it
+     always sits directly beside "Medium" (or wraps down together with it). */
+  .lvl-group{display:flex;gap:7px;min-width:0}
+  .lvl-group > *{min-width:0}
+  .settings-card .settings-controls .lvl-group > *{flex:1 1 auto}
   .settings-break{display:none}
 
   .btn{
@@ -628,6 +635,10 @@
   .stat b{font-family:"Fredoka","Outfit",sans-serif;font-weight:600;font-size:20px}
 
   .modal .btn{width:100%;padding:13px}
+  /* ...except the real-words-only toggle once it's paired with the level select (see
+     .lvl-group above) — there it sits inline beside "Medium" instead of claiming the
+     modal's usual full-width row. */
+  .modal .lvl-group .btn{width:auto;padding:10px 18px}
   .modal .hint{margin:14px 0 0;font-size:12px;color:var(--muted)}
 
   .hide{display:none !important}
@@ -655,6 +666,11 @@
     #mpHome .settings-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     #mpHome .settings-row .lbl{grid-column:1 / -1}
     #mpHome .settings-row select{width:100%;min-width:0}
+    /* dissolve the desktop lvl+real-words pairing (see .lvl-group, and the .modal .btn
+       override, above) back into two independent grid cells, same as every other control
+       in this grid — and restore the toggle's usual full-width-of-its-cell look. */
+    #mpHome .settings-row .lvl-group{display:contents}
+    #mpHome .settings-row .lvl-group .btn{width:100%}
     .seg{min-width:0}
 
     /* single-player card: a horizontal scroll strip is awkward on a phone (the primary
@@ -669,6 +685,10 @@
       overflow-x:visible;
     }
     .settings-card .settings-controls > *{width:100%;min-width:0}
+    /* the desktop lvl+real-words pairing (see non-mobile rule above) would otherwise
+       occupy one whole grid cell as a cramped mini-row — dissolve it back into its two
+       children so they resume pairing independently in the 2-column grid, same as before. */
+    .settings-card .settings-controls .lvl-group{display:contents}
     .settings-card .settings-controls #newBtn{grid-column:1 / -1}
     .settings-card .settings-controls select{width:100%} /* langSel is nested in .field-select, not a direct child — the div stretching isn't enough on its own */
     .btn-new,.btn-give{padding:11px 12px;font-size:13.5px}
@@ -722,6 +742,12 @@
   .mp-edit{border:0;background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;font-size:13px;vertical-align:middle;padding:2px 6px}
   .mp-edit:hover{color:var(--accent)}
   .mp-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px;margin:18px 0 10px;text-transform:uppercase;letter-spacing:.14em}
+  /* each control grows to fill the settings row, so 2 controls (Numbers: language + length)
+     span the same full width as "Create a room" below just like 4 do (Words: + level +
+     real-words-only) — same idea as the single-player card's .settings-controls above,
+     instead of leaving a dead gap on the shorter Numbers row. */
+  #mpHome .settings-row > *{flex:1 1 auto}
+  #mpHome .settings-row .lvl-group > *{flex:1 1 auto}
   .mp-divider::before,.mp-divider::after{content:"";flex:1;height:1px;background:var(--line)}
   .mp-hint{color:var(--muted);font-size:12.5px;text-align:center;margin:10px 0}
   .mp-code-inputs{margin:6px 0 14px}
@@ -822,8 +848,13 @@
             </div>
             <div class="cselect"><select id="lenSel" title="Word length"></select></div>
             <div class="cselect" id="diffSelWrap"><select id="diffSel" title="Difficulty"></select></div>
-            <div class="cselect hide" id="lvlSelWrap"><select id="lvlSel" title="Level"></select></div>
-            <button type="button" class="btn hide" id="realWordsBtn" aria-pressed="false">Real words only</button>
+            <!-- Level + real-words-only always show/hide together (see syncLevelUI) and are
+                 grouped in their own flex row so the toggle stays glued to its dropdown
+                 instead of wrapping off onto a lonely full-width line of its own. -->
+            <div class="lvl-group hide" id="lvlGroup">
+              <div class="cselect" id="lvlSelWrap"><select id="lvlSel" title="Level"></select></div>
+              <button type="button" class="btn" id="realWordsBtn" aria-pressed="false">Real words only</button>
+            </div>
             <button class="btn btn-give" id="giveBtn">Give up</button>
             <div class="settings-break" aria-hidden="true"></div>
             <button class="btn btn-new" id="newBtn">New game</button>
@@ -892,15 +923,21 @@
           </select>
         </div>
         <div class="cselect"><select id="mpLenSel" title="Word length"></select></div>
-        <div class="cselect hide" id="mpLvlSelWrap">
-          <select id="mpLvlSel" title="Level">
-            <option value="easy">Easy</option>
-            <option value="medium" selected>Medium</option>
-            <option value="hard">Hard</option>
-            <option value="hell">Hell</option>
-          </select>
+        <!-- Level + real-words-only always show/hide together (see mpSyncLevelUI) and are
+             grouped in their own flex row so the toggle stays glued to its dropdown instead
+             of the blanket ".modal .btn{width:100%}" rule stretching it into a lonely
+             full-width line of its own. -->
+        <div class="lvl-group hide" id="mpLvlGroup">
+          <div class="cselect" id="mpLvlSelWrap">
+            <select id="mpLvlSel" title="Level">
+              <option value="easy">Easy</option>
+              <option value="medium" selected>Medium</option>
+              <option value="hard">Hard</option>
+              <option value="hell">Hell</option>
+            </select>
+          </div>
+          <button type="button" class="btn" id="mpRealWordsBtn" aria-pressed="false">Real words only</button>
         </div>
-        <button type="button" class="btn hide" id="mpRealWordsBtn" aria-pressed="false">Real words only</button>
       </div>
       <button class="btn primary" id="mpCreateBtn" type="button" style="width:100%;margin-top:14px">Create a room</button>
       <div class="mp-divider"><span>or join with a code</span></div>
@@ -1303,8 +1340,7 @@ function syncLangAvailability(){
 // in Word mode — hide both in Numbers mode rather than leaving them present but inert.
 function syncLevelUI(){
   const wordOnly = S.mode === "word";
-  $("lvlSelWrap").classList.toggle("hide", !wordOnly);
-  realWordsBtn.classList.toggle("hide", !wordOnly);
+  $("lvlGroup").classList.toggle("hide", !wordOnly);
 }
 
 function buildLvlOptions(){
@@ -2260,8 +2296,7 @@ function mpSyncSettingsUI(){
   mpBuildLenOptions();
   // level/real-words-only only mean anything for word rounds, same as single-player's
   // syncLevelUI()
-  mp$("mpLvlSelWrap").classList.toggle("hide", !wordOnly);
-  mp$("mpRealWordsBtn").classList.toggle("hide", !wordOnly);
+  mp$("mpLvlGroup").classList.toggle("hide", !wordOnly);
   mp$("mpLvlSel").value = MP.settings.level;
   mp$("mpRealWordsBtn").classList.toggle("primary", MP.settings.realWordsOnly);
   mp$("mpRealWordsBtn").setAttribute("aria-pressed", String(MP.settings.realWordsOnly));
