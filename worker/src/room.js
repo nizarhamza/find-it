@@ -30,10 +30,10 @@ export class Room {
     if (existing && existing.status !== "finished") return json({ error: "taken" }, 409);
 
     const body = await request.json();
-    const { code, mode, len, lang, hostId, hostName } = body;
+    const { code, mode, len, lang, level, realWordsOnly, hostId, hostName } = body;
     if (!code || !mode || !len || !hostId || !hostName) return json({ error: "missing fields" }, 400);
 
-    const secret = await randomSecret(mode, Number(len), lang || "en");
+    const secret = await randomSecret(mode, Number(len), lang || "en", level || "medium", !!realWordsOnly);
     if (!secret) return json({ error: "Could not fetch a word right now — try again in a moment." }, 503);
 
     const room = {
@@ -41,6 +41,8 @@ export class Room {
       mode,
       len: Number(len),
       lang: lang || "en",
+      level: level || "medium",
+      realWordsOnly: !!realWordsOnly,
       secret,
       status: "waiting", // waiting -> playing -> finished
       hostId,
@@ -105,7 +107,7 @@ export class Room {
     }
 
     if (data.type === "rematch" && playerId === room.hostId && room.status === "finished") {
-      const secret = await randomSecret(room.mode, room.len, room.lang);
+      const secret = await randomSecret(room.mode, room.len, room.lang, room.level, room.realWordsOnly);
       if (!secret) return; // dictionary unreachable — leave the room "finished" so the host can just hit rematch again
       room.secret = secret;
       room.status = "waiting";
@@ -196,6 +198,8 @@ export class Room {
       mode: room.mode,
       len: room.len,
       lang: room.lang,
+      level: room.level || "medium",
+      realWordsOnly: !!room.realWordsOnly,
       hostId: room.hostId,
       winnerId: room.winnerId,
       secret: room.status === "finished" ? room.secret : undefined,
