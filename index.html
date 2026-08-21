@@ -161,10 +161,11 @@
     font-weight:600;font-size:34px;letter-spacing:-.02em;color:var(--text);
     display:flex;align-items:center;gap:11px;
   }
-  h1::before{
-    content:"";width:12px;height:12px;border-radius:4px;
-    background:var(--accent);transform:translateY(-2px);flex:none;
-  }
+  /* Same three dots as the favicon/app icon (see the <link rel="icon"> in <head>) — same
+     colours and proportions, just without its dark tile backing, inlined as SVG so it
+     stays crisp at any size. viewBox is cropped to the dots themselves (the icon's own
+     64x64 canvas is mostly tile padding). */
+  .logo-icon{flex:none;height:22px;width:auto}
   .sub{color:var(--muted);font-size:14px;font-weight:300;margin-top:7px;text-align:center}
 
   /* menu + theme sit together, pinned to the row's start edge (right in RTL — a
@@ -822,7 +823,7 @@
         <button class="menu-btn" id="menuBtn" title="Game menu" aria-label="Toggle mode &amp; settings menu" aria-expanded="false" aria-controls="settingsPanel"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg></button>
         <button class="theme-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
       </div>
-      <h1>Find It</h1>
+      <h1><svg class="logo-icon" viewBox="8 22 50 20" aria-hidden="true"><circle cx="18" cy="32" r="7" fill="#2fc2a2"/><circle cx="36" cy="32" r="7" fill="#f2c14e"/><circle cx="51" cy="32" r="5" fill="#f07e5f"/></svg>Find It</h1>
       <button class="room-btn" id="roomBtn" type="button" title="Room" aria-label="Open multiplayer room">
         <span class="room-btn-ic" id="roomBtnIcon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg></span><span id="roomBtnText">Room</span>
       </button>
